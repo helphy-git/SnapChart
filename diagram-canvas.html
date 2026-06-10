@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Canvas</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0b0d0c;
+  --surface:    #111312;
+  --surface2:   #161918;
+  --border:     #1c1f1e;
+  --border-hi:  #252a28;
+  --amber:      #e8a020;
+  --amber-dim:  #6a4a10;
+  --amber-glow: #e8a01a18;
+  --green:      #3ddc84;
+  --green-dim:  #174d30;
+  --red:        #e85050;
+  --blue:       #7a9ae8;
+  --blue-dim:   #1a2a5a;
+  --text:       #c2cec2;
+  --text-mid:   #7a8a7a;
+  --text-dim:   #455045;
+  --mono:       'IBM Plex Mono', monospace;
+  --sans:       'IBM Plex Sans', sans-serif;
+  --tile-w:     420px;
+  --tile-h:     360px;
+  --radius:     3px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* scanlines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.025) 3px, rgba(0,0,0,0.025) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+.topbar-left { display: flex; align-items: baseline; gap: 14px; }
+
+.app-name {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.app-sub {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 480px;
+}
+
+.master-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.master-date {
+  font-size: 10px;
+  color: var(--amber);
+  white-space: nowrap;
+  min-width: 90px;
+  text-align: right;
+}
+
+.master-slider-wrap {
+  flex: 1;
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.master-track {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--border-hi);
+  border-radius: 1px;
+}
+
+.master-fill {
+  position: absolute;
+  left: 0;
+  height: 2px;
+  background: var(--amber);
+  border-radius: 1px;
+  box-shadow: 0 0 8px var(--amber-dim);
+  transition: width 0.15s ease;
+}
+
+.master-thumb-wrap {
+  position: absolute;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.master-tick {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--border-hi);
+  margin-top: -1px;
+}
+
+input[type=range].master-input {
+  position: absolute;
+  left: 0; right: 0; width: 100%;
+  opacity: 0;
+  height: 20px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.tbtn {
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  color: var(--text-mid);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.tbtn:hover { border-color: var(--amber-dim); color: var(--amber); background: var(--amber-glow); }
+.tbtn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-glow); }
+
+.play-tbtn {
+  padding: 5px 12px;
+  border-color: var(--amber-dim);
+  color: var(--amber);
+  font-size: 11px;
+}
+
+/* ── CANVAS AREA ── */
+.canvas-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(232,160,32,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(61,220,132,0.02) 0%, transparent 50%),
+    var(--bg);
+}
+
+/* dot grid */
+.canvas-scroll {
+  background-image:
+    radial-gradient(circle, var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-color: var(--bg);
+}
+
+.canvas-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.canvas-scroll::-webkit-scrollbar-track { background: transparent; }
+.canvas-scroll::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--tile-w));
+  gap: 20px;
+  width: fit-content;
+  min-width: 100%;
+}
+
+/* ── TILE ── */
+.tile {
+  width: var(--tile-w);
+  height: var(--tile-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+
+.tile:hover {
+  border-color: var(--border-hi);
+}
+
+.tile.detached {
+  border-color: var(--amber-dim);
+  box-shadow: 0 0 0 1px var(--amber-dim), 0 0 20px rgba(232,160,32,0.08);
+}
+
+.tile.synced.just-updated {
+  border-color: var(--green-dim);
+}
+
+/* tile header */
+.tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface2);
+}
+
+.tile-title {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+.tile-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sync-badge {
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+  border: 1px solid;
+}
+
+.sync-badge.synced {
+  border-color: var(--green-dim);
+  color: var(--green);
+  background: rgba(61,220,132,0.06);
+}
+
+.sync-badge.detached {
+  border-color: var(--amber-dim);
+  color: var(--amber);
+  background: var(--amber-glow);
+}
+
+/* tile diagram */
+.tile-diagram {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  position: relative;
+  transition: opacity 0.15s;
+}
+
+.tile-diagram.fading { opacity: 0; }
+
+.tile-diagram svg {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto !important;
+}
+
+.tile-err {
+  font-size: 9px;
+  color: var(--red);
+  text-align: center;
+  padding: 12px;
+}
+
+/* tile footer / mini timeline */
+.tile-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 7px 12px 8px;
+  background: var(--surface2);
+}
+
+.tile-version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.tile-v-label {
+  font-size: 9px;
+  color: var(--text-mid);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-v-badge {
+  font-size: 7px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.badge-init   { background: #1a1a3a; color: #7a9ae8; }
+.badge-add    { background: var(--green-dim); color: var(--green); }
+.badge-change { background: #3a2800; color: var(--amber); }
+.badge-remove { background: #3a1a1a; color: var(--red); }
+
+.mini-timeline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-btn {
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: 8px;
+  cursor: pointer;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.1s;
+  padding: 0;
+  line-height: 1;
+}
+
+.mini-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+.mini-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.mini-btn:disabled:hover { border-color: var(--border-hi); color: var(--text-dim); }
+
+.mini-track-wrap {
+  flex: 1;
+  position: relative;
+  height: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.mini-track-bg {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--border-hi);
+}
+
+.mini-track-fill {
+  position: absolute;
+  left: 0;
+  height: 1px;
+  background: var(--amber);
+  transition: width 0.15s;
+}
+
+.mini-dots-row {
+  position: absolute;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mini-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--border-hi);
+  border: 1px solid var(--border-hi);
+  cursor: pointer;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.mini-dot.past { background: var(--amber-dim); border-color: var(--amber-dim); }
+.mini-dot.cur  { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 4px var(--amber); width: 7px; height: 7px; }
+
+input[type=range].mini-range {
+  position: absolute;
+  left: 0; right: 0; width: 100%;
+  opacity: 0;
+  height: 14px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.tile-v-counter {
+  font-size: 8px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes border-flash {
+  0%   { border-color: var(--green); box-shadow: 0 0 12px rgba(61,220,132,0.2); }
+  100% { border-color: var(--border); box-shadow: none; }
+}
+
+.tile.flash { animation: border-flash 0.6s ease-out forwards; }
+
+/* ── LEGEND ── */
+.legend {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  padding: 6px 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  font-size: 8px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  display: flex;
+  gap: 14px;
+  z-index: 100;
+}
+
+.legend span { color: var(--text-mid); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="app-name">Arch Canvas</span>
+    <span class="app-sub">multi-diagram timeline</span>
+  </div>
+
+  <div class="topbar-center">
+    <span class="master-label">Master</span>
+    <div class="master-slider-wrap">
+      <div class="master-track"></div>
+      <div class="master-fill" id="master-fill"></div>
+      <div class="master-thumb-wrap" id="master-ticks"></div>
+      <input type="range" class="master-input" id="master-range"
+             min="0" step="1" value="0"
+             oninput="onMasterInput(this.value)">
+    </div>
+    <span class="master-date" id="master-date">—</span>
+  </div>
+
+  <div class="topbar-right">
+    <button class="tbtn play-tbtn" id="btn-play" onclick="togglePlay()">▶</button>
+    <button class="tbtn" onclick="cycleSpeed()" id="btn-speed">1×</button>
+    <button class="tbtn" id="btn-sync-all" onclick="syncAll()">Sync All</button>
+  </div>
+</div>
+
+<!-- CANVAS -->
+<div class="canvas-scroll">
+  <div class="tile-grid" id="tile-grid"></div>
+</div>
+
+<div class="legend">
+  <span>● Synced to master</span>
+  <span style="color:var(--amber)">● Detached — independent</span>
+  <span>Click badge to toggle</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA  — edit diagrams[] to add your own content
+// ═══════════════════════════════════════════════════════
+const diagrams = [
+  {
+    id: 'core-net',
+    title: 'Core Network',
+    versions: [
+      { ts: '2024-01', label: 'Single core', changeType: 'init',
+        src: `graph TD
+  ISP-->FW[Firewall]
+  FW-->CORE[Core Switch]
+  CORE-->WS[Workstations]
+  CORE-->SRV[Servers]
+  style FW fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style CORE fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8` },
+      { ts: '2024-04', label: 'Distribution added', changeType: 'add',
+        src: `graph TD
+  ISP-->FW[Firewall]
+  FW-->DIST[Distribution ★]
+  DIST-->ACC1[Access Fl.1]
+  DIST-->ACC2[Access Fl.2]
+  DIST-->SRV[Servers]
+  ACC1-->WS1[Workstations]
+  ACC2-->WS2[Workstations]
+  style FW fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style DIST fill:#1e1e2e,stroke:#e8a020,color:#e8a020` },
+      { ts: '2024-09', label: 'Floor 2 consolidated', changeType: 'remove',
+        src: `graph TD
+  ISP-->FW[Firewall]
+  FW-->DIST[Distribution]
+  DIST-->ACC[Access — all floors ✕]
+  DIST-->SRV[Servers]
+  ACC-->WS[Workstations]
+  style FW fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style DIST fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+  style ACC fill:#2a1a1a,stroke:#e85050,color:#e85050` },
+      { ts: '2025-02', label: 'Current state', changeType: 'change',
+        src: `graph TD
+  ISP-->FW[Firewall]
+  FW-->DIST[Distribution]
+  DIST-->ACC[Access Switch]
+  DIST-->SRV[Servers]
+  DIST-->MGMT[Mgmt VLAN 99]
+  ACC-->WS[Workstations]
+  ACC-->VOIP[VoIP VLAN 40]
+  style FW fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style DIST fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+  style MGMT fill:#1a1a1a,stroke:#2a3330,color:#5a6a5a` }
+    ]
+  },
+
+  {
+    id: 'azure',
+    title: 'Azure Hybrid',
+    versions: [
+      { ts: '2024-06', label: 'VPN only', changeType: 'init',
+        src: `graph TD
+  ONPREM[On-Prem]-->VPN[VPN Gateway]
+  VPN-->VNET[Azure VNet]
+  VNET-->VM1[VM — Prod]
+  style VPN fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style VNET fill:#10182a,stroke:#7a9ae8,color:#c8d4c8` },
+      { ts: '2024-09', label: 'Hub-spoke', changeType: 'add',
+        src: `graph TD
+  ONPREM[On-Prem]-->ER[ExpressRoute ★]
+  ER-->HUB[Hub VNet ★]
+  HUB-->SPOKE1[Prod Spoke ★]
+  HUB-->SPOKE2[Dev Spoke ★]
+  SPOKE1-->VM1[VM — Prod]
+  SPOKE2-->VM2[VM — Dev]
+  style ER fill:#1e2e1e,stroke:#3ddc84,color:#3ddc84
+  style HUB fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style SPOKE1 fill:#10182a,stroke:#7a9ae8,color:#c8d4c8
+  style SPOKE2 fill:#10182a,stroke:#7a9ae8,color:#8a9a8a` },
+      { ts: '2025-01', label: 'Firewall added', changeType: 'add',
+        src: `graph TD
+  ONPREM[On-Prem]-->ER[ExpressRoute]
+  ER-->HUB[Hub VNet]
+  HUB-->AFW[Azure Firewall ★]
+  AFW-->SPOKE1[Prod Spoke]
+  AFW-->SPOKE2[Dev Spoke]
+  SPOKE1-->VM1[VM — Prod]
+  SPOKE2-->VM2[VM — Dev]
+  style ER fill:#1e2e1e,stroke:#3ddc84,color:#3ddc84
+  style HUB fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style AFW fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style SPOKE1 fill:#10182a,stroke:#7a9ae8,color:#c8d4c8
+  style SPOKE2 fill:#10182a,stroke:#7a9ae8,color:#8a9a8a` }
+    ]
+  },
+
+  {
+    id: 'fw-zones',
+    title: 'Firewall Zones',
+    versions: [
+      { ts: '2024-01', label: 'Basic 3-zone', changeType: 'init',
+        src: `graph LR
+  UNTRUST[Untrust / WAN]-->|permit 443|DMZ
+  DMZ-->|permit 1433|TRUST[Trust / LAN]
+  TRUST-->|deny|UNTRUST
+  style UNTRUST fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style DMZ fill:#1e1e10,stroke:#e8a020,color:#e8a020
+  style TRUST fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84` },
+      { ts: '2024-05', label: 'MGMT zone split', changeType: 'add',
+        src: `graph LR
+  UNTRUST[Untrust]-->DMZ
+  DMZ-->TRUST[Trust]
+  MGMT[Mgmt ★]-->TRUST
+  MGMT-->DMZ
+  UNTRUST-->|deny|MGMT
+  style UNTRUST fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style DMZ fill:#1e1e10,stroke:#e8a020,color:#e8a020
+  style TRUST fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84
+  style MGMT fill:#10182a,stroke:#7a9ae8,color:#7a9ae8` },
+      { ts: '2024-10', label: 'Azure zone added', changeType: 'add',
+        src: `graph LR
+  UNTRUST[Untrust]-->DMZ
+  DMZ-->TRUST[Trust]
+  MGMT[Mgmt]-->TRUST
+  AZURE[Azure ★]-->|ER only|TRUST
+  AZURE-->MGMT
+  style UNTRUST fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style DMZ fill:#1e1e10,stroke:#e8a020,color:#e8a020
+  style TRUST fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84
+  style MGMT fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style AZURE fill:#10182a,stroke:#7a9ae8,color:#7a9ae8` },
+      { ts: '2025-03', label: 'Guest VLAN isolated', changeType: 'change',
+        src: `graph LR
+  UNTRUST[Untrust]-->DMZ
+  DMZ-->TRUST[Trust]
+  MGMT[Mgmt]-->TRUST
+  AZURE[Azure]-->|ER only|TRUST
+  GUEST[Guest ★]-->|permit 80,443|UNTRUST
+  GUEST-->|deny|TRUST
+  style UNTRUST fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style DMZ fill:#1e1e10,stroke:#e8a020,color:#e8a020
+  style TRUST fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84
+  style MGMT fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style AZURE fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style GUEST fill:#2a1a2a,stroke:#aa60e8,color:#aa60e8` }
+    ]
+  },
+
+  {
+    id: 'incident',
+    title: 'Incident Flow',
+    versions: [
+      { ts: '2024-01', label: 'Ad-hoc process', changeType: 'init',
+        src: `flowchart TD
+  A[Alert fires] --> B{Who sees it?}
+  B --> C[Someone handles it]
+  C --> D[Maybe documented]
+  style A fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style B fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8
+  style D fill:#1a1a1a,stroke:#2a3330,color:#5a6a5a` },
+      { ts: '2024-07', label: 'Triage added', changeType: 'change',
+        src: `flowchart TD
+  A[Alert fires] --> T[Triage ★]
+  T -->|P1| P1[Incident Bridge]
+  T -->|P2-3| Q[Queue / Ticket]
+  P1 --> RES[Resolve]
+  Q --> RES
+  RES --> PIR[Post-incident review ★]
+  style A fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style T fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+  style P1 fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style PIR fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84` },
+      { ts: '2025-01', label: 'Runbooks integrated', changeType: 'add',
+        src: `flowchart TD
+  A[Alert fires] --> T[Triage]
+  T -->|P1| P1[Incident Bridge]
+  T -->|P2-3| Q[Queue / Ticket]
+  P1 --> RB[Runbook lookup ★]
+  RB --> RES[Resolve]
+  Q --> RES
+  RES --> PIR[Post-incident review]
+  PIR --> RB2[Update runbook ★]
+  style A fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style T fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+  style P1 fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style PIR fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84
+  style RB fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style RB2 fill:#10182a,stroke:#7a9ae8,color:#7a9ae8` }
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+//  GLOBAL TIMELINE  — derived from all timestamps
+// ═══════════════════════════════════════════════════════
+const allTs = [...new Set(
+  diagrams.flatMap(d => d.versions.map(v => v.ts))
+)].sort();
+
+let masterIdx   = 0;
+let playing     = false;
+let playTimer   = null;
+let speedIdx    = 0;
+const speeds    = [1, 2, 0.5];
+const speedLbls = ['1×','2×','½×'];
+const BASE_MS   = 2000;
+
+// per-tile state: { curIdx, detached }
+const tileState = {};
+diagrams.forEach(d => {
+  tileState[d.id] = { curIdx: 0, detached: false };
+});
+
+// ═══════════════════════════════════════════════════════
+//  MERMAID
+// ═══════════════════════════════════════════════════════
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  themeVariables: {
+    background: '#111312',
+    mainBkg:    '#161918',
+    nodeBorder: '#252a28',
+    lineColor:  '#3a4a3a',
+    edgeLabelBackground: '#111312',
+    titleColor: '#c2cec2',
+  },
+  flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true }
+});
+
+// ═══════════════════════════════════════════════════════
+//  MASTER SLIDER
+// ═══════════════════════════════════════════════════════
+function buildMasterSlider() {
+  const range = document.getElementById('master-range');
+  range.max   = allTs.length - 1;
+  range.value = masterIdx;
+
+  const ticks = document.getElementById('master-ticks');
+  ticks.innerHTML = '';
+  allTs.forEach(() => {
+    const t = document.createElement('div');
+    t.className = 'master-tick';
+    ticks.appendChild(t);
+  });
+  updateMasterUI();
+}
+
+function updateMasterUI() {
+  const pct = allTs.length > 1 ? (masterIdx / (allTs.length - 1)) * 100 : 0;
+  document.getElementById('master-fill').style.width  = pct + '%';
+  document.getElementById('master-date').textContent  = allTs[masterIdx];
+  document.getElementById('master-range').value       = masterIdx;
+}
+
+function onMasterInput(val) {
+  masterIdx = parseInt(val);
+  updateMasterUI();
+  applySyncedTiles();
+}
+
+// For each synced tile, find the latest version whose ts <= master ts
+function versionIdxAtTime(diag, ts) {
+  let best = 0;
+  diag.versions.forEach((v, i) => { if (v.ts <= ts) best = i; });
+  return best;
+}
+
+function applySyncedTiles(animate = true) {
+  diagrams.forEach(d => {
+    const st = tileState[d.id];
+    if (st.detached) return;
+    const newIdx = versionIdxAtTime(d, allTs[masterIdx]);
+    if (newIdx !== st.curIdx) {
+      st.curIdx = newIdx;
+      renderTile(d.id, animate);
+      flashTile(d.id);
+    }
+    updateTileUI(d.id);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TILE BUILDING
+// ═══════════════════════════════════════════════════════
+function buildTiles() {
+  const grid = document.getElementById('tile-grid');
+  grid.innerHTML = '';
+  diagrams.forEach(d => {
+    const tile = document.createElement('div');
+    tile.className = 'tile synced';
+    tile.id = `tile-${d.id}`;
+    tile.innerHTML = `
+      <div class="tile-head">
+        <span class="tile-title">${d.title}</span>
+        <div class="tile-head-right">
+          <span class="sync-badge synced" id="badge-${d.id}" onclick="toggleDetach('${d.id}')">synced</span>
+        </div>
+      </div>
+      <div class="tile-diagram" id="diag-${d.id}"></div>
+      <div class="tile-footer">
+        <div class="tile-version-row">
+          <span class="tile-v-label" id="vlabel-${d.id}">—</span>
+          <span class="tile-v-badge" id="vbadge-${d.id}"></span>
+          <span class="tile-v-counter" id="vcnt-${d.id}"></span>
+        </div>
+        <div class="mini-timeline">
+          <button class="mini-btn" id="mprev-${d.id}" onclick="tileStep('${d.id}',-1)">◀</button>
+          <div class="mini-track-wrap">
+            <div class="mini-track-bg"></div>
+            <div class="mini-track-fill" id="mfill-${d.id}"></div>
+            <div class="mini-dots-row" id="mdots-${d.id}"></div>
+            <input type="range" class="mini-range" id="mrange-${d.id}"
+                   min="0" max="${d.versions.length-1}" step="1" value="0"
+                   oninput="onTileRange('${d.id}',this.value)">
+          </div>
+          <button class="mini-btn" id="mnext-${d.id}" onclick="tileStep('${d.id}',1)">▶</button>
+        </div>
+      </div>`;
+    grid.appendChild(tile);
+  });
+}
+
+function updateTileUI(id) {
+  const d   = diagrams.find(x => x.id === id);
+  const st  = tileState[id];
+  const v   = d.versions[st.curIdx];
+  const n   = d.versions.length;
+
+  document.getElementById(`vlabel-${id}`).textContent = v.label;
+  document.getElementById(`vcnt-${id}`).textContent   = `${st.curIdx+1}/${n}`;
+
+  const bEl = document.getElementById(`vbadge-${id}`);
+  bEl.className = `tile-v-badge badge-${v.changeType}`;
+  bEl.textContent = { init:'init', add:'+add', change:'~chg', remove:'−rem' }[v.changeType];
+
+  // mini slider
+  const pct = n > 1 ? (st.curIdx / (n-1)) * 100 : 0;
+  document.getElementById(`mfill-${id}`).style.width = pct + '%';
+  document.getElementById(`mrange-${id}`).value      = st.curIdx;
+
+  // dots
+  const dotsEl = document.getElementById(`mdots-${id}`);
+  dotsEl.innerHTML = '';
+  d.versions.forEach((_,i) => {
+    const dot = document.createElement('div');
+    dot.className = 'mini-dot' + (i === st.curIdx ? ' cur' : i < st.curIdx ? ' past' : '');
+    dot.onclick = (e) => { e.stopPropagation(); tileGoTo(id, i); };
+    dotsEl.appendChild(dot);
+  });
+
+  document.getElementById(`mprev-${id}`).disabled = st.curIdx === 0;
+  document.getElementById(`mnext-${id}`).disabled = st.curIdx === n-1;
+}
+
+async function renderTile(id, animate = true) {
+  const d   = diagrams.find(x => x.id === id);
+  const st  = tileState[id];
+  const el  = document.getElementById(`diag-${id}`);
+  if (!el) return;
+
+  if (animate) {
+    el.classList.add('fading');
+    await new Promise(r => setTimeout(r, 120));
+  }
+
+  try {
+    const uid = `mm-${id}-${Date.now()}`;
+    const { svg } = await mermaid.render(uid, d.versions[st.curIdx].src);
+    el.innerHTML = svg;
+  } catch(e) {
+    el.innerHTML = `<div class="tile-err">⚠ ${e.message}</div>`;
+  }
+
+  if (animate) el.classList.remove('fading');
+  updateTileUI(id);
+}
+
+function flashTile(id) {
+  const tile = document.getElementById(`tile-${id}`);
+  tile.classList.remove('flash');
+  void tile.offsetWidth;
+  tile.classList.add('flash');
+  setTimeout(() => tile.classList.remove('flash'), 700);
+}
+
+// ═══════════════════════════════════════════════════════
+//  TILE CONTROLS
+// ═══════════════════════════════════════════════════════
+function toggleDetach(id) {
+  const st   = tileState[id];
+  st.detached = !st.detached;
+  const tile  = document.getElementById(`tile-${id}`);
+  const badge = document.getElementById(`badge-${id}`);
+  if (st.detached) {
+    tile.classList.remove('synced'); tile.classList.add('detached');
+    badge.className = 'sync-badge detached'; badge.textContent = 'detached';
+  } else {
+    tile.classList.remove('detached'); tile.classList.add('synced');
+    badge.className = 'sync-badge synced'; badge.textContent = 'synced';
+    // re-sync to master
+    st.curIdx = versionIdxAtTime(diagrams.find(d=>d.id===id), allTs[masterIdx]);
+    renderTile(id);
+  }
+}
+
+function syncAll() {
+  diagrams.forEach(d => {
+    const st = tileState[d.id];
+    if (st.detached) {
+      st.detached = false;
+      const tile  = document.getElementById(`tile-${d.id}`);
+      const badge = document.getElementById(`badge-${d.id}`);
+      tile.classList.remove('detached'); tile.classList.add('synced');
+      badge.className = 'sync-badge synced'; badge.textContent = 'synced';
+      st.curIdx = versionIdxAtTime(d, allTs[masterIdx]);
+      renderTile(d.id);
+    }
+  });
+}
+
+function tileGoTo(id, idx) {
+  const st = tileState[id];
+  if (!st.detached) {
+    // auto-detach when scrubbed manually
+    st.detached = true;
+    const tile  = document.getElementById(`tile-${id}`);
+    const badge = document.getElementById(`badge-${id}`);
+    tile.classList.remove('synced'); tile.classList.add('detached');
+    badge.className = 'sync-badge detached'; badge.textContent = 'detached';
+  }
+  st.curIdx = idx;
+  renderTile(id);
+}
+
+function tileStep(id, d) {
+  const st = tileState[id];
+  const diag = diagrams.find(x => x.id === id);
+  tileGoTo(id, Math.max(0, Math.min(diag.versions.length-1, st.curIdx + d)));
+}
+
+function onTileRange(id, val) {
+  tileGoTo(id, parseInt(val));
+}
+
+// ═══════════════════════════════════════════════════════
+//  PLAYBACK
+// ═══════════════════════════════════════════════════════
+function togglePlay() {
+  playing = !playing;
+  const btn = document.getElementById('btn-play');
+  if (playing) {
+    btn.textContent = '⏸'; btn.classList.add('active');
+    scheduleNext();
+  } else {
+    btn.textContent = '▶'; btn.classList.remove('active');
+    clearTimeout(playTimer);
+  }
+}
+
+function scheduleNext() {
+  if (!playing) return;
+  const ms = BASE_MS / speeds[speedIdx];
+  playTimer = setTimeout(() => {
+    masterIdx = (masterIdx + 1) % allTs.length;
+    updateMasterUI();
+    applySyncedTiles();
+    scheduleNext();
+  }, ms);
+}
+
+function cycleSpeed() {
+  speedIdx = (speedIdx+1) % speeds.length;
+  document.getElementById('btn-speed').textContent = speedLbls[speedIdx];
+  if (playing) { clearTimeout(playTimer); scheduleNext(); }
+}
+
+// keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight') { masterIdx = Math.min(allTs.length-1, masterIdx+1); updateMasterUI(); applySyncedTiles(); }
+  if (e.key === 'ArrowLeft')  { masterIdx = Math.max(0, masterIdx-1); updateMasterUI(); applySyncedTiles(); }
+  if (e.key === ' ')          { togglePlay(); e.preventDefault(); }
+});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+buildMasterSlider();
+buildTiles();
+
+// initial sync render
+(async () => {
+  for (const d of diagrams) {
+    await renderTile(d.id, false);
+  }
+  applySyncedTiles(false);
+})();
+</script>
+</body>
+</html>

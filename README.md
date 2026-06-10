@@ -1,5 +1,18 @@
 # SnapChart
 A flowchart as code with timeline
+-Different versions / concepts too
+
+## diagram-timeline
+- Basic timeline with states on left side.  Includes showing Mermaid Source Code
+
+## diagram-canvas
+- Supports multiple little diagrams in one screen with ability to synch them up or display seperately
+#### Versions
+    v4 - Possible Git integration idea
+    v3 - Resizable and Can show source of each window
+    v2 - Draggable
+
+
 
 # Enhancements for next version
 

@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagram Timeline</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f0e;
+    --surface:   #131614;
+    --border:    #1e2420;
+    --border-hi: #2a3330;
+    --amber:     #e8a020;
+    --amber-dim: #7a5010;
+    --amber-glow:#e8a02022;
+    --green:     #3ddc84;
+    --green-dim: #1a5c38;
+    --red:       #e85050;
+    --text:      #c8d4c8;
+    --text-dim:  #5a6a5a;
+    --text-mid:  #8a9a8a;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  .app-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+
+  .app-subtitle {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .kbd-hint {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    border: 1px solid var(--border-hi);
+    border-radius: 2px;
+    font-size: 9px;
+    color: var(--text-mid);
+    font-family: var(--mono);
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .version-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .version-list::-webkit-scrollbar { width: 4px; }
+  .version-list::-webkit-scrollbar-track { background: transparent; }
+  .version-list::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+  .version-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.12s ease;
+    position: relative;
+  }
+
+  .version-item:hover {
+    background: var(--border);
+    border-left-color: var(--amber-dim);
+  }
+
+  .version-item.active {
+    background: var(--amber-glow);
+    border-left-color: var(--amber);
+  }
+
+  .version-item.active .v-label {
+    color: var(--amber);
+  }
+
+  .v-index {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 3px;
+  }
+
+  .v-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .v-timestamp {
+    font-size: 9px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  .v-badge {
+    display: inline-block;
+    margin-top: 5px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .badge-add    { background: #1a3a28; color: var(--green); }
+  .badge-change { background: #3a2800; color: var(--amber); }
+  .badge-remove { background: #3a1a1a; color: var(--red);   }
+  .badge-init   { background: #1a1a3a; color: #7a9ae8;       }
+
+  /* ── DIAGRAM AREA ── */
+  .diagram-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .diagram-meta {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .meta-left {}
+
+  .meta-version {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 3px;
+  }
+
+  .meta-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    font-family: var(--sans);
+  }
+
+  .meta-desc {
+    font-size: 11px;
+    color: var(--text-mid);
+    margin-top: 4px;
+    font-family: var(--sans);
+    font-weight: 300;
+  }
+
+  .meta-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--border-hi);
+    color: var(--text-mid);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.12s;
+  }
+
+  .btn:hover {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+    background: var(--amber-glow);
+  }
+
+  .btn.active {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: var(--amber-glow);
+  }
+
+  .btn-icon { font-size: 12px; }
+
+  /* ── DIAGRAM RENDER ── */
+  .diagram-render {
+    flex: 1;
+    overflow: auto;
+    padding: 32px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    position: relative;
+  }
+
+  .diagram-render::-webkit-scrollbar { width: 6px; height: 6px; }
+  .diagram-render::-webkit-scrollbar-track { background: transparent; }
+  .diagram-render::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+  #diagram-container {
+    transition: opacity 0.15s ease;
+    max-width: 100%;
+  }
+
+  #diagram-container.fading { opacity: 0; }
+
+  #diagram-container svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* mermaid dark theme overrides */
+  #diagram-container .label { color: var(--text) !important; }
+
+  .no-diagram {
+    color: var(--text-dim);
+    font-size: 12px;
+    padding: 40px;
+    text-align: center;
+  }
+
+  /* ── TIMELINE ── */
+  .timeline-bar {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 16px 24px 18px;
+  }
+
+  .timeline-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .timeline-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .timeline-pos {
+    font-size: 10px;
+    color: var(--amber);
+    letter-spacing: 0.05em;
+  }
+
+  .timeline-track {
+    position: relative;
+    height: 32px;
+    display: flex;
+    align-items: center;
+  }
+
+  .track-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--border-hi);
+  }
+
+  .track-progress {
+    position: absolute;
+    left: 0;
+    height: 1px;
+    background: var(--amber);
+    transition: width 0.2s ease;
+    box-shadow: 0 0 6px var(--amber-dim);
+  }
+
+  .track-dots {
+    position: absolute;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .track-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--border-hi);
+    background: var(--bg);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .track-dot:hover {
+    border-color: var(--amber-dim);
+    background: var(--amber-dim);
+  }
+
+  .track-dot.active {
+    border-color: var(--amber);
+    background: var(--amber);
+    box-shadow: 0 0 8px var(--amber);
+    width: 10px;
+    height: 10px;
+  }
+
+  .track-dot.past {
+    border-color: var(--amber-dim);
+    background: var(--amber-dim);
+  }
+
+  .dot-label {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+  }
+
+  .track-dot.active .dot-label { color: var(--amber); }
+
+  /* range input hidden, track-dots handle interaction */
+  .timeline-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .ctrl-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border-hi);
+    color: var(--text-mid);
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 11px;
+    transition: all 0.12s;
+  }
+
+  .ctrl-btn:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: var(--amber-glow);
+  }
+
+  .ctrl-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .ctrl-btn:disabled:hover {
+    border-color: var(--border-hi);
+    color: var(--text-mid);
+    background: transparent;
+  }
+
+  .play-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
+  .play-btn.playing {
+    border-color: var(--amber);
+    background: var(--amber-glow);
+    box-shadow: 0 0 12px var(--amber-glow);
+  }
+
+  .speed-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    min-width: 40px;
+    text-align: center;
+  }
+
+  /* ── SOURCE PANEL ── */
+  .source-panel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 420px;
+    background: var(--surface);
+    border-left: 1px solid var(--border-hi);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 100;
+  }
+
+  .source-panel.open { transform: translateX(0); }
+
+  .source-panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .source-title {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    font-family: var(--mono);
+  }
+
+  .close-btn:hover { color: var(--text); }
+
+  .source-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .source-content pre {
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-mid);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 8px var(--amber); }
+    50%       { box-shadow: 0 0 16px var(--amber), 0 0 4px var(--amber); }
+  }
+
+  .track-dot.active { animation: pulse-dot 2s ease-in-out infinite; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="app-title">Diagram Timeline</span>
+    <span class="app-subtitle">versioned architecture viewer</span>
+  </div>
+  <div class="header-right">
+    <span class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>Space</kbd> play</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">Versions</div>
+    <div class="version-list" id="version-list"></div>
+  </aside>
+
+  <!-- DIAGRAM AREA -->
+  <div class="diagram-area">
+    <div class="diagram-meta">
+      <div class="meta-left">
+        <div class="meta-version" id="meta-version"></div>
+        <div class="meta-label"   id="meta-label"></div>
+        <div class="meta-desc"    id="meta-desc"></div>
+      </div>
+      <div class="meta-right">
+        <button class="btn" id="btn-source" onclick="toggleSource()">
+          <span class="btn-icon">⌥</span> Source
+        </button>
+      </div>
+    </div>
+
+    <div class="diagram-render">
+      <div id="diagram-container"></div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline-bar">
+      <div class="timeline-top">
+        <span class="timeline-label">Timeline</span>
+        <span class="timeline-pos" id="timeline-pos"></span>
+      </div>
+      <div class="timeline-track">
+        <div class="track-line"></div>
+        <div class="track-progress" id="track-progress"></div>
+        <div class="track-dots" id="track-dots"></div>
+      </div>
+      <div class="timeline-controls">
+        <button class="ctrl-btn" id="btn-first"  onclick="goTo(0)"          title="First">⏮</button>
+        <button class="ctrl-btn" id="btn-prev"   onclick="stepBy(-1)"       title="Previous">◀</button>
+        <button class="ctrl-btn play-btn" id="btn-play" onclick="togglePlay()" title="Play/Pause">▶</button>
+        <button class="ctrl-btn" id="btn-next"   onclick="stepBy(1)"        title="Next">▶</button>
+        <button class="ctrl-btn" id="btn-last"   onclick="goTo(versions.length-1)" title="Last">⏭</button>
+        <span class="speed-label" id="speed-label">1×</span>
+        <button class="ctrl-btn" onclick="cycleSpeed()" title="Speed">⚡</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SOURCE PANEL -->
+<div class="source-panel" id="source-panel">
+  <div class="source-panel-header">
+    <span class="source-title">Mermaid Source</span>
+    <button class="close-btn" onclick="toggleSource()">✕</button>
+  </div>
+  <div class="source-content">
+    <pre id="source-text"></pre>
+  </div>
+</div>
+
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────
+// Edit this array to add your own diagram versions.
+// Each entry: { timestamp, label, description, changeType, diagram }
+// changeType: 'init' | 'add' | 'change' | 'remove'
+const versions = [
+  {
+    timestamp: "2024-01-15  09:00",
+    label: "Initial State",
+    description: "Flat network — all VLANs on a single core switch",
+    changeType: "init",
+    diagram: `graph TD
+    ISP[ISP / WAN] --> FW[Firewall]
+    FW --> CORE[Core Switch]
+    CORE --> WS1[Workstations VLAN 10]
+    CORE --> SRV[Servers VLAN 20]
+    CORE --> MGMT[Mgmt VLAN 99]
+    style ISP  fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style FW   fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+    style CORE fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8
+    style WS1  fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style SRV  fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style MGMT fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a`
+  },
+  {
+    timestamp: "2024-03-02  14:30",
+    label: "DMZ Added",
+    description: "Introduced DMZ segment for public-facing services",
+    changeType: "add",
+    diagram: `graph TD
+    ISP[ISP / WAN] --> FW[Firewall]
+    FW --> DMZ[DMZ VLAN 30 ★ NEW]
+    FW --> CORE[Core Switch]
+    DMZ --> WEB[Web Server]
+    DMZ --> MAIL[Mail Relay]
+    CORE --> WS1[Workstations VLAN 10]
+    CORE --> SRV[Servers VLAN 20]
+    CORE --> MGMT[Mgmt VLAN 99]
+    style ISP  fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style FW   fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+    style DMZ  fill:#1e2e10,stroke:#3ddc84,color:#3ddc84
+    style WEB  fill:#131614,stroke:#3ddc84,color:#c8d4c8
+    style MAIL fill:#131614,stroke:#3ddc84,color:#c8d4c8
+    style CORE fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8
+    style WS1  fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style SRV  fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style MGMT fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a`
+  },
+  {
+    timestamp: "2024-06-18  11:15",
+    label: "Distribution Layer",
+    description: "Core–distribution–access model introduced for site scale",
+    changeType: "change",
+    diagram: `graph TD
+    ISP[ISP / WAN] --> FW[Firewall]
+    FW --> DMZ[DMZ VLAN 30]
+    FW --> DIST[Distribution Switch ★ NEW]
+    DMZ --> WEB[Web Server]
+    DMZ --> MAIL[Mail Relay]
+    DIST --> ACC1[Access Sw — Floor 1]
+    DIST --> ACC2[Access Sw — Floor 2]
+    DIST --> SRV[Servers VLAN 20]
+    DIST --> MGMT[Mgmt VLAN 99]
+    ACC1 --> WS1[Workstations]
+    ACC1 --> VOIP1[VoIP VLAN 40 ★ NEW]
+    ACC2 --> WS2[Workstations]
+    ACC2 --> VOIP2[VoIP VLAN 40]
+    style ISP   fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style FW    fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+    style DMZ   fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style WEB   fill:#131614,stroke:#3ddc84,color:#8a9a8a
+    style MAIL  fill:#131614,stroke:#3ddc84,color:#8a9a8a
+    style DIST  fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+    style ACC1  fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8
+    style ACC2  fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8
+    style SRV   fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style MGMT  fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style WS1   fill:#131614,stroke:#2a3330,color:#8a9a8a
+    style WS2   fill:#131614,stroke:#2a3330,color:#8a9a8a
+    style VOIP1 fill:#1e1e10,stroke:#e8a020,color:#e8a020
+    style VOIP2 fill:#1e1e10,stroke:#e8a020,color:#8a9a8a`
+  },
+  {
+    timestamp: "2024-09-05  16:00",
+    label: "Azure Hybrid",
+    description: "ExpressRoute and hub-spoke added for Azure workloads",
+    changeType: "add",
+    diagram: `graph TD
+    ISP[ISP / WAN] --> FW[Firewall]
+    ISP --> ER[ExpressRoute ★ NEW]
+    FW --> DMZ[DMZ VLAN 30]
+    FW --> DIST[Distribution Switch]
+    ER --> HUB[Azure Hub VNet ★ NEW]
+    HUB --> SPOKE1[Spoke — Prod ★ NEW]
+    HUB --> SPOKE2[Spoke — Dev ★ NEW]
+    DMZ --> WEB[Web Server]
+    DMZ --> MAIL[Mail Relay]
+    DIST --> ACC1[Access Sw — Floor 1]
+    DIST --> ACC2[Access Sw — Floor 2]
+    DIST --> SRV[Servers VLAN 20]
+    DIST --> MGMT[Mgmt VLAN 99]
+    ACC1 --> WS1[Workstations]
+    ACC1 --> VOIP1[VoIP VLAN 40]
+    ACC2 --> WS2[Workstations]
+    ACC2 --> VOIP2[VoIP VLAN 40]
+    style ISP    fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style ER     fill:#1e2e1e,stroke:#3ddc84,color:#3ddc84
+    style FW     fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+    style DMZ    fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style HUB    fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+    style SPOKE1 fill:#10182a,stroke:#7a9ae8,color:#c8d4c8
+    style SPOKE2 fill:#10182a,stroke:#7a9ae8,color:#8a9a8a
+    style WEB    fill:#131614,stroke:#3ddc84,color:#8a9a8a
+    style MAIL   fill:#131614,stroke:#3ddc84,color:#8a9a8a
+    style DIST   fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+    style ACC1   fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8
+    style ACC2   fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8
+    style SRV    fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style MGMT   fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style WS1    fill:#131614,stroke:#2a3330,color:#8a9a8a
+    style WS2    fill:#131614,stroke:#2a3330,color:#8a9a8a
+    style VOIP1  fill:#1e1e10,stroke:#e8a020,color:#8a9a8a
+    style VOIP2  fill:#1e1e10,stroke:#e8a020,color:#8a9a8a`
+  },
+  {
+    timestamp: "2025-01-20  08:45",
+    label: "Legacy Decom",
+    description: "Floor 2 access switch consolidated, mail relay retired",
+    changeType: "remove",
+    diagram: `graph TD
+    ISP[ISP / WAN] --> FW[Firewall]
+    ISP --> ER[ExpressRoute]
+    FW --> DMZ[DMZ VLAN 30]
+    FW --> DIST[Distribution Switch]
+    ER --> HUB[Azure Hub VNet]
+    HUB --> SPOKE1[Spoke — Prod]
+    HUB --> SPOKE2[Spoke — Dev]
+    DMZ --> WEB[Web Server]
+    DIST --> ACC1[Access Sw ✕ consolidated]
+    DIST --> SRV[Servers VLAN 20]
+    DIST --> MGMT[Mgmt VLAN 99]
+    ACC1 --> WS1[Workstations — all floors]
+    ACC1 --> VOIP1[VoIP VLAN 40]
+    style ISP    fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style ER     fill:#1e2e1e,stroke:#3ddc84,color:#c8d4c8
+    style FW     fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+    style DMZ    fill:#1a2a1a,stroke:#3ddc84,color:#c8d4c8
+    style HUB    fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+    style SPOKE1 fill:#10182a,stroke:#7a9ae8,color:#c8d4c8
+    style SPOKE2 fill:#10182a,stroke:#7a9ae8,color:#8a9a8a
+    style WEB    fill:#131614,stroke:#3ddc84,color:#8a9a8a
+    style DIST   fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+    style ACC1   fill:#2a1a1a,stroke:#e85050,color:#e85050
+    style SRV    fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style MGMT   fill:#1a1a1a,stroke:#2a3330,color:#8a9a8a
+    style WS1    fill:#131614,stroke:#2a3330,color:#8a9a8a
+    style VOIP1  fill:#1e1e10,stroke:#e8a020,color:#8a9a8a`
+  }
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────
+let current   = 0;
+let playing   = false;
+let playTimer = null;
+let speeds    = [1, 2, 0.5];
+let speedIdx  = 0;
+const SPEED_LABELS = ['1×', '2×', '½×'];
+const BASE_INTERVAL = 2200;
+
+// ── INIT ─────────────────────────────────────────────────────────────────
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  themeVariables: {
+    background:       '#0d0f0e',
+    mainBkg:          '#131614',
+    nodeBorder:       '#2a3330',
+    clusterBkg:       '#131614',
+    titleColor:       '#c8d4c8',
+    edgeLabelBackground: '#0d0f0e',
+    lineColor:        '#3a4a3a',
+  },
+  flowchart: { curve: 'basis', htmlLabels: true }
+});
+
+function buildSidebar() {
+  const list = document.getElementById('version-list');
+  list.innerHTML = '';
+  versions.forEach((v, i) => {
+    const item = document.createElement('div');
+    item.className = 'version-item' + (i === current ? ' active' : '');
+    item.id = `v-item-${i}`;
+    item.onclick = () => goTo(i);
+    const badgeMap = { init: 'init', add: 'add', change: 'change', remove: 'remove' };
+    const badgeTxt = { init: 'Initial', add: '+ Added', change: '~ Changed', remove: '− Removed' };
+    item.innerHTML = `
+      <div class="v-index">V${String(i+1).padStart(2,'0')}</div>
+      <div class="v-label">${v.label}</div>
+      <div class="v-timestamp">${v.timestamp}</div>
+      <div><span class="v-badge badge-${badgeMap[v.changeType]}">${badgeTxt[v.changeType]}</span></div>`;
+    list.appendChild(item);
+  });
+}
+
+function buildTimeline() {
+  const dotsEl = document.getElementById('track-dots');
+  dotsEl.innerHTML = '';
+  versions.forEach((v, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'track-dot' + (i === current ? ' active' : i < current ? ' past' : '');
+    dot.id = `dot-${i}`;
+    dot.onclick = () => goTo(i);
+    dot.title = v.label;
+    const lbl = document.createElement('div');
+    lbl.className = 'dot-label';
+    lbl.textContent = v.timestamp.split(' ')[0];
+    dot.appendChild(lbl);
+    dotsEl.appendChild(dot);
+  });
+}
+
+function updateTimeline() {
+  const pct = versions.length > 1 ? (current / (versions.length - 1)) * 100 : 0;
+  document.getElementById('track-progress').style.width = pct + '%';
+  document.getElementById('timeline-pos').textContent =
+    `V${String(current+1).padStart(2,'0')} / V${String(versions.length).padStart(2,'0')}  ·  ${versions[current].timestamp}`;
+
+  versions.forEach((_, i) => {
+    const dot = document.getElementById(`dot-${i}`);
+    if (!dot) return;
+    dot.className = 'track-dot' + (i === current ? ' active' : i < current ? ' past' : '');
+  });
+}
+
+function updateSidebar() {
+  versions.forEach((_, i) => {
+    const item = document.getElementById(`v-item-${i}`);
+    if (!item) return;
+    item.className = 'version-item' + (i === current ? ' active' : '');
+  });
+  const active = document.getElementById(`v-item-${current}`);
+  if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+async function renderDiagram(animate = true) {
+  const v   = versions[current];
+  const el  = document.getElementById('diagram-container');
+
+  if (animate) {
+    el.classList.add('fading');
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  try {
+    const id  = `mermaid-${Date.now()}`;
+    const { svg } = await mermaid.render(id, v.diagram);
+    el.innerHTML  = svg;
+  } catch(e) {
+    el.innerHTML = `<div class="no-diagram">⚠ Parse error — check source<br><small style="color:var(--text-dim)">${e.message}</small></div>`;
+  }
+
+  if (animate) el.classList.remove('fading');
+
+  // update meta
+  document.getElementById('meta-version').textContent = `V${String(current+1).padStart(2,'0')} of ${versions.length}`;
+  document.getElementById('meta-label').textContent   = v.label;
+  document.getElementById('meta-desc').textContent    = v.description;
+  document.getElementById('source-text').textContent  = v.diagram.trim();
+
+  // buttons
+  document.getElementById('btn-first').disabled = current === 0;
+  document.getElementById('btn-prev').disabled  = current === 0;
+  document.getElementById('btn-next').disabled  = current === versions.length - 1;
+  document.getElementById('btn-last').disabled  = current === versions.length - 1;
+}
+
+function goTo(idx) {
+  if (idx < 0 || idx >= versions.length) return;
+  current = idx;
+  updateSidebar();
+  updateTimeline();
+  renderDiagram(true);
+}
+
+function stepBy(d) {
+  goTo(Math.max(0, Math.min(versions.length - 1, current + d)));
+}
+
+function togglePlay() {
+  playing = !playing;
+  const btn = document.getElementById('btn-play');
+  if (playing) {
+    btn.textContent = '⏸';
+    btn.classList.add('playing');
+    scheduleNext();
+  } else {
+    btn.textContent = '▶';
+    btn.classList.remove('playing');
+    clearTimeout(playTimer);
+  }
+}
+
+function scheduleNext() {
+  if (!playing) return;
+  const interval = BASE_INTERVAL / speeds[speedIdx];
+  playTimer = setTimeout(() => {
+    if (current >= versions.length - 1) {
+      goTo(0);
+    } else {
+      stepBy(1);
+    }
+    scheduleNext();
+  }, interval);
+}
+
+function cycleSpeed() {
+  speedIdx = (speedIdx + 1) % speeds.length;
+  document.getElementById('speed-label').textContent = SPEED_LABELS[speedIdx];
+  if (playing) { clearTimeout(playTimer); scheduleNext(); }
+}
+
+function toggleSource() {
+  const panel = document.getElementById('source-panel');
+  const btn   = document.getElementById('btn-source');
+  panel.classList.toggle('open');
+  btn.classList.toggle('active');
+}
+
+// keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft')  { stepBy(-1); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { stepBy(1);  e.preventDefault(); }
+  if (e.key === ' ')          { togglePlay(); e.preventDefault(); }
+  if (e.key === 'Home')       { goTo(0); e.preventDefault(); }
+  if (e.key === 'End')        { goTo(versions.length - 1); e.preventDefault(); }
+});
+
+// boot
+buildSidebar();
+buildTimeline();
+renderDiagram(false);
+</script>
+</body>
+</html>

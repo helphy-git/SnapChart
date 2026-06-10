@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Canvas v4</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0b0d0c;
+  --surface:    #111312;
+  --surface2:   #161918;
+  --border:     #1c1f1e;
+  --border-hi:  #252a28;
+  --amber:      #e8a020;
+  --amber-dim:  #6a4a10;
+  --amber-glow: #e8a01a18;
+  --green:      #3ddc84;
+  --green-dim:  #174d30;
+  --red:        #e85050;
+  --blue:       #7a9ae8;
+  --purple:     #b07ae8;
+  --purple-dim: #4a2a6a;
+  --purple-glow:#b07ae812;
+  --text:       #c2cec2;
+  --text-mid:   #7a8a7a;
+  --text-dim:   #455045;
+  --mono:       'IBM Plex Mono', monospace;
+  --sans:       'IBM Plex Sans', sans-serif;
+  --radius:     3px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.025) 3px, rgba(0,0,0,0.025) 4px);
+  pointer-events: none; z-index: 9999;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; gap: 16px;
+  z-index: 200; position: relative;
+}
+.topbar-left { display: flex; align-items: baseline; gap: 14px; }
+.app-name { font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--amber); }
+.app-sub  { font-size: 9px; color: var(--text-dim); letter-spacing: 0.08em; }
+
+.topbar-center { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 520px; }
+.master-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); white-space: nowrap; }
+.master-date  { font-size: 10px; color: var(--amber); white-space: nowrap; min-width: 90px; text-align: right; }
+.master-slider-wrap { flex: 1; position: relative; height: 20px; display: flex; align-items: center; }
+.master-track { position: absolute; left: 0; right: 0; height: 2px; background: var(--border-hi); border-radius: 1px; }
+.master-fill  { position: absolute; left: 0; height: 2px; background: var(--amber); border-radius: 1px; box-shadow: 0 0 8px var(--amber-dim); transition: width 0.15s ease; }
+input[type=range].master-input { position: absolute; left: 0; right: 0; width: 100%; opacity: 0; height: 20px; cursor: pointer; z-index: 2; }
+
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.tbtn {
+  padding: 5px 10px; background: transparent;
+  border: 1px solid var(--border-hi); color: var(--text-mid);
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer; border-radius: var(--radius);
+  transition: all 0.12s; white-space: nowrap;
+}
+.tbtn:hover  { border-color: var(--amber-dim); color: var(--amber); background: var(--amber-glow); }
+.tbtn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-glow); }
+.play-tbtn   { padding: 5px 12px; border-color: var(--amber-dim); color: var(--amber); font-size: 11px; }
+
+/* ── TYPE LEGEND ── */
+.type-legend {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.tl-item { display: flex; align-items: center; gap: 4px; font-size: 8px; color: var(--text-dim); }
+.tl-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── CANVAS ── */
+.canvas-outer { flex: 1; overflow: auto; position: relative; }
+.canvas-outer::-webkit-scrollbar { width: 8px; height: 8px; }
+.canvas-outer::-webkit-scrollbar-track { background: var(--bg); }
+.canvas-outer::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+.canvas-inner {
+  position: relative; width: 2600px; height: 1800px;
+  background-image: radial-gradient(circle, #1c201e 1px, transparent 1px);
+  background-size: 28px 28px; background-color: var(--bg);
+}
+
+/* ── TILE ── */
+.tile {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+  min-width: 280px; min-height: 260px;
+}
+.tile:hover    { border-color: var(--border-hi); box-shadow: 0 6px 32px rgba(0,0,0,0.5); }
+.tile.detached { border-color: var(--amber-dim); box-shadow: 0 0 0 1px var(--amber-dim), 0 6px 32px rgba(0,0,0,0.5); }
+.tile.dragging { border-color: var(--amber); box-shadow: 0 12px 48px rgba(0,0,0,0.7), 0 0 0 1px var(--amber); z-index: 500 !important; transition: none; }
+.tile.resizing { border-color: var(--blue); transition: none; }
+
+/* type accent on left border */
+.tile[data-type="mermaid"] { border-left: 2px solid var(--blue); }
+.tile[data-type="text"]    { border-left: 2px solid var(--green); }
+.tile[data-type="image"]   { border-left: 2px solid var(--purple); }
+.tile[data-type="mixed"]   { border-left: 2px solid var(--amber); }
+
+/* tile header */
+.tile-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; background: var(--surface2);
+  cursor: grab;
+}
+.tile-head:active { cursor: grabbing; }
+.tile-drag-icon { font-size: 10px; color: var(--text-dim); margin-right: 7px; pointer-events: none; }
+.tile-title-block { flex: 1; pointer-events: none; }
+.tile-title { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; color: var(--text); text-transform: uppercase; }
+.tile-type-chip {
+  font-size: 7px; padding: 1px 5px; border-radius: 2px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-top: 2px; display: inline-block; border: 1px solid;
+}
+.chip-mermaid { border-color: var(--blue);   color: var(--blue);   background: rgba(122,154,232,0.08); }
+.chip-text    { border-color: var(--green-dim); color: var(--green); background: rgba(61,220,132,0.06); }
+.chip-image   { border-color: var(--purple-dim); color: var(--purple); background: var(--purple-glow); }
+.chip-mixed   { border-color: var(--amber-dim); color: var(--amber); background: var(--amber-glow); }
+
+.tile-head-right { display: flex; align-items: center; gap: 5px; }
+
+.sync-badge {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.12s; border: 1px solid;
+}
+.sync-badge.synced   { border-color: var(--green-dim); color: var(--green); background: rgba(61,220,132,0.06); }
+.sync-badge.detached { border-color: var(--amber-dim); color: var(--amber); background: var(--amber-glow); }
+
+.src-btn {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.12s;
+  border: 1px solid var(--border-hi); color: var(--text-dim);
+  background: transparent; font-family: var(--mono);
+}
+.src-btn:hover  { border-color: var(--blue); color: var(--blue); }
+.src-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(122,154,232,0.08); }
+
+/* ── TILE BODY ── */
+.tile-body { flex: 1; position: relative; overflow: hidden; min-height: 100px; }
+
+/* MERMAID renderer */
+.render-mermaid {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px; transition: opacity 0.15s; overflow: hidden;
+}
+.render-mermaid svg { max-width: 100%; max-height: 100%; height: auto !important; width: auto !important; }
+.render-mermaid.fading { opacity: 0; }
+
+/* TEXT renderer */
+.render-text {
+  position: absolute; inset: 0;
+  overflow: auto; padding: 14px 16px;
+  display: none;
+  background: var(--bg);
+}
+.render-text::-webkit-scrollbar { width: 4px; }
+.render-text::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+.render-text.fading { opacity: 0; }
+.render-text .text-body {
+  font-family: var(--sans); font-size: 11px;
+  line-height: 1.7; color: var(--text);
+  font-weight: 300;
+}
+/* basic markdown-ish styling */
+.render-text h1,.render-text h2,.render-text h3 {
+  font-family: var(--mono); color: var(--amber);
+  letter-spacing: 0.06em; margin-bottom: 8px; margin-top: 14px;
+  font-size: 11px; text-transform: uppercase;
+}
+.render-text h1::before { content: '# '; }
+.render-text h2::before { content: '## '; }
+.render-text h3::before { content: '### '; }
+.render-text strong { color: var(--text); font-weight: 500; }
+.render-text em { color: var(--text-mid); font-style: italic; }
+.render-text code {
+  font-family: var(--mono); font-size: 10px;
+  background: var(--surface2); padding: 1px 5px;
+  border-radius: 2px; color: var(--green);
+  border: 1px solid var(--border);
+}
+.render-text ul, .render-text ol { padding-left: 18px; margin: 6px 0; }
+.render-text li { margin: 3px 0; }
+.render-text p  { margin: 6px 0; }
+.render-text blockquote {
+  border-left: 2px solid var(--amber-dim);
+  padding-left: 10px; color: var(--text-mid);
+  margin: 8px 0;
+}
+.render-text hr {
+  border: none; border-top: 1px solid var(--border-hi);
+  margin: 12px 0;
+}
+
+/* IMAGE renderer */
+.render-image {
+  position: absolute; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 8px; overflow: hidden;
+  background: var(--bg);
+}
+.render-image.fading { opacity: 0; }
+.render-image img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain; border-radius: 2px;
+}
+.render-image .img-caption {
+  position: absolute; bottom: 8px; left: 0; right: 0;
+  text-align: center; font-size: 8px;
+  color: var(--text-dim); letter-spacing: 0.06em;
+}
+
+/* SOURCE view */
+.render-source {
+  position: absolute; inset: 0;
+  display: none; overflow: auto;
+  padding: 12px 14px; background: var(--bg);
+}
+.render-source::-webkit-scrollbar { width: 4px; }
+.render-source::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+.render-source pre {
+  font-family: var(--mono); font-size: 10px;
+  line-height: 1.7; color: var(--blue);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* active states */
+.render-mermaid.active { display: flex; }
+.render-text.active    { display: block; transition: opacity 0.15s; }
+.render-image.active   { display: flex; }
+.render-source.active  { display: block; }
+
+/* ── TILE FOOTER ── */
+.tile-footer {
+  flex-shrink: 0; border-top: 1px solid var(--border);
+  padding: 6px 10px 7px; background: var(--surface2);
+}
+.tile-version-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.tile-v-label { font-size: 9px; color: var(--text-mid); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-v-type  { font-size: 7px; padding: 1px 4px; border-radius: 2px; margin-left: 5px; flex-shrink: 0; border: 1px solid; }
+.tile-v-badge { font-size: 7px; padding: 1px 4px; border-radius: 2px; letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; margin-left: 4px; }
+.badge-init   { background: #1a1a3a; color: #7a9ae8; }
+.badge-add    { background: var(--green-dim); color: var(--green); }
+.badge-change { background: #3a2800; color: var(--amber); }
+.badge-remove { background: #3a1a1a; color: var(--red); }
+.tile-v-counter { font-size: 8px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+
+.mini-timeline { display: flex; align-items: center; gap: 5px; }
+.mini-btn { width: 15px; height: 15px; background: transparent; border: 1px solid var(--border-hi); color: var(--text-dim); font-size: 8px; cursor: pointer; border-radius: 2px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.1s; padding: 0; line-height: 1; }
+.mini-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+.mini-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.mini-btn:disabled:hover { border-color: var(--border-hi); color: var(--text-dim); }
+.mini-track-wrap { flex: 1; position: relative; height: 14px; display: flex; align-items: center; }
+.mini-track-bg   { position: absolute; left: 0; right: 0; height: 1px; background: var(--border-hi); }
+.mini-track-fill { position: absolute; left: 0; height: 1px; background: var(--amber); transition: width 0.15s; }
+.mini-dots-row   { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; }
+.mini-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border-hi); border: 1px solid var(--border-hi); cursor: pointer; transition: all 0.1s; flex-shrink: 0; }
+.mini-dot.past { background: var(--amber-dim); border-color: var(--amber-dim); }
+.mini-dot.cur  { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 4px var(--amber); width: 7px; height: 7px; }
+/* type-coloured dots */
+.mini-dot[data-type="mermaid"].cur { background: var(--blue); border-color: var(--blue); box-shadow: 0 0 4px var(--blue); }
+.mini-dot[data-type="text"].cur    { background: var(--green); border-color: var(--green); box-shadow: 0 0 4px var(--green); }
+.mini-dot[data-type="image"].cur   { background: var(--purple); border-color: var(--purple); box-shadow: 0 0 4px var(--purple); }
+input[type=range].mini-range { position: absolute; left: 0; right: 0; width: 100%; opacity: 0; height: 14px; cursor: pointer; z-index: 2; }
+
+/* ── RESIZE HANDLE ── */
+.resize-handle { position: absolute; bottom: 0; right: 0; width: 18px; height: 18px; cursor: se-resize; z-index: 10; display: flex; align-items: flex-end; justify-content: flex-end; padding: 3px; }
+.resize-handle::after { content: ''; display: block; width: 8px; height: 8px; border-right: 2px solid var(--border-hi); border-bottom: 2px solid var(--border-hi); border-radius: 0 0 2px 0; transition: border-color 0.15s; }
+.tile:hover .resize-handle::after { border-color: var(--text-dim); }
+
+/* ── FULLSCREEN OVERLAY ── */
+.fs-overlay {
+  position: fixed; inset: 0;
+  z-index: 800;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  opacity: 0; transform: scale(0.97);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.fs-overlay.open { opacity: 1; transform: scale(1); pointer-events: all; }
+
+.fs-bar {
+  display: flex; align-items: center;
+  padding: 10px 16px; gap: 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.fs-title-block { flex: 1; }
+.fs-title { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); font-family: var(--sans); }
+.fs-subtitle { font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+
+.fs-close {
+  padding: 5px 10px; background: transparent;
+  border: 1px solid var(--border-hi); color: var(--text-mid);
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer; border-radius: var(--radius);
+  transition: all 0.12s;
+}
+.fs-close:hover { border-color: var(--red); color: var(--red); background: rgba(232,80,80,0.08); }
+
+.fs-body {
+  flex: 1; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+
+/* mermaid in fullscreen — allow larger render */
+.fs-body .render-mermaid svg { max-width: 90vw; max-height: 80vh; }
+.fs-body .render-text { font-size: 13px; max-width: 800px; padding: 0 8px; }
+.fs-body .render-text .text-body { font-size: 13px; line-height: 1.8; }
+.fs-body .render-image img { max-height: 80vh; max-width: 90vw; }
+.fs-body .render-source pre { font-size: 11px; }
+
+.fs-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 10px 24px 12px;
+  background: var(--surface2);
+}
+.fs-version-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.fs-v-label { font-size: 10px; color: var(--text-mid); flex: 1; }
+.fs-v-badge { font-size: 8px; padding: 2px 6px; border-radius: 2px; letter-spacing: 0.06em; text-transform: uppercase; margin-left: 8px; }
+.fs-v-counter { font-size: 9px; color: var(--text-dim); }
+
+.fs-timeline { display: flex; align-items: center; gap: 10px; }
+.fs-btn {
+  width: 24px; height: 24px; background: transparent;
+  border: 1px solid var(--border-hi); color: var(--text-dim);
+  font-size: 10px; cursor: pointer; border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s; padding: 0; flex-shrink: 0;
+}
+.fs-btn:hover { border-color: var(--amber-dim); color: var(--amber); }
+.fs-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.fs-btn:disabled:hover { border-color: var(--border-hi); color: var(--text-dim); }
+
+.fs-track-wrap { flex: 1; position: relative; height: 20px; display: flex; align-items: center; }
+.fs-track-bg   { position: absolute; left: 0; right: 0; height: 1px; background: var(--border-hi); }
+.fs-track-fill { position: absolute; left: 0; height: 2px; background: var(--amber); border-radius: 1px; transition: width 0.15s; box-shadow: 0 0 6px var(--amber-dim); }
+.fs-dots-row   { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; }
+.fs-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border-hi); border: 1px solid var(--border-hi);
+  cursor: pointer; transition: all 0.12s; flex-shrink: 0;
+  position: relative;
+}
+.fs-dot:hover { background: var(--amber-dim); border-color: var(--amber-dim); }
+.fs-dot.past { background: var(--amber-dim); border-color: var(--amber-dim); }
+.fs-dot.cur  { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 8px var(--amber); width: 11px; height: 11px; }
+.fs-dot[data-type="mermaid"].cur { background: var(--blue); border-color: var(--blue); box-shadow: 0 0 8px var(--blue); }
+.fs-dot[data-type="text"].cur    { background: var(--green); border-color: var(--green); box-shadow: 0 0 8px var(--green); }
+.fs-dot[data-type="image"].cur   { background: var(--purple); border-color: var(--purple); box-shadow: 0 0 8px var(--purple); }
+.fs-dot-label {
+  position: absolute; bottom: 14px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px; color: var(--text-dim);
+  white-space: nowrap; pointer-events: none;
+  letter-spacing: 0.04em;
+}
+.fs-dot.cur .fs-dot-label { color: var(--amber); }
+input[type=range].fs-range { position: absolute; left: 0; right: 0; width: 100%; opacity: 0; height: 20px; cursor: pointer; z-index: 2; }
+
+/* ── GIT BACKEND NOTE ── */
+.git-note {
+  position: fixed; bottom: 26px; right: 16px;
+  max-width: 260px;
+  background: var(--surface); border: 1px solid var(--border-hi);
+  border-radius: var(--radius); padding: 8px 12px; z-index: 300;
+  font-size: 8px; color: var(--text-dim); line-height: 1.6;
+  letter-spacing: 0.04em;
+}
+.git-note strong { color: var(--amber); display: block; margin-bottom: 3px; letter-spacing: 0.1em; }
+.git-note code { color: var(--blue); font-size: 8px; }
+
+/* ── MINIMAP ── */
+.minimap { position: fixed; bottom: 26px; left: 16px; width: 160px; height: 100px; background: var(--surface); border: 1px solid var(--border-hi); border-radius: var(--radius); overflow: hidden; z-index: 300; opacity: 0.85; }
+.minimap-viewport { position: absolute; border: 1px solid var(--amber); background: rgba(232,160,32,0.06); pointer-events: none; transition: all 0.1s; }
+.minimap-dot { position: absolute; background: var(--border-hi); border-radius: 1px; }
+
+/* ── LEGEND ── */
+.legend { position: fixed; bottom: 0; right: 0; padding: 5px 14px; background: var(--surface); border-top: 1px solid var(--border); border-left: 1px solid var(--border); font-size: 8px; color: var(--text-dim); letter-spacing: 0.06em; display: flex; gap: 14px; z-index: 300; }
+.legend span { color: var(--text-mid); }
+
+/* ── FLASH ── */
+@keyframes border-flash {
+  0%   { border-color: var(--green); }
+  100% { border-color: var(--border); }
+}
+.tile.flash { animation: border-flash 0.7s ease-out forwards; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="app-name">Arch Canvas</span>
+    <span class="app-sub">v4 · multi-type timeline</span>
+  </div>
+  <div class="topbar-center">
+    <span class="master-label">Master</span>
+    <div class="master-slider-wrap">
+      <div class="master-track"></div>
+      <div class="master-fill" id="master-fill"></div>
+      <input type="range" class="master-input" id="master-range" min="0" step="1" value="0" oninput="onMasterInput(this.value)">
+    </div>
+    <span class="master-date" id="master-date">—</span>
+  </div>
+  <div class="topbar-right">
+    <div class="type-legend">
+      <span class="tl-item"><span class="tl-dot" style="background:var(--blue)"></span>mermaid</span>
+      <span class="tl-item"><span class="tl-dot" style="background:var(--green)"></span>text</span>
+      <span class="tl-item"><span class="tl-dot" style="background:var(--purple)"></span>image</span>
+      <span class="tl-item"><span class="tl-dot" style="background:var(--amber)"></span>mixed</span>
+    </div>
+    <button class="tbtn play-tbtn" id="btn-play" onclick="togglePlay()">▶</button>
+    <button class="tbtn" onclick="cycleSpeed()" id="btn-speed">1×</button>
+    <button class="tbtn" onclick="syncAll()">Sync All</button>
+    <button class="tbtn" onclick="resetLayout()">Reset</button>
+  </div>
+</div>
+
+<div class="canvas-outer" id="canvas-outer">
+  <div class="canvas-inner" id="canvas-inner"></div>
+</div>
+
+<div class="minimap" id="minimap">
+  <div class="minimap-viewport" id="minimap-vp"></div>
+</div>
+
+<!-- Git backend note -->
+<div class="git-note">
+  <strong>⌥ Git backend</strong>
+  Replace <code>versions[]</code> with:<br>
+  <code>GET /repos/.../commits?path=file</code><br>
+  then per commit:<br>
+  <code>GET /contents/file?ref={sha}</code><br>
+  Each commit SHA → full file snapshot.
+</div>
+
+<div class="legend">
+  <span>⠿ Drag header · ↘ Resize · ⌥ src toggle</span>
+</div>
+
+<!-- FULLSCREEN OVERLAY -->
+<div class="fs-overlay" id="fs-overlay">
+  <div class="fs-bar">
+    <div class="fs-title-block">
+      <div class="fs-title" id="fs-title">—</div>
+      <div class="fs-subtitle" id="fs-subtitle">—</div>
+    </div>
+    <button class="fs-close" onclick="closeFullscreen()">✕ Close &nbsp;<kbd style="font-size:8px;border:1px solid #2a3330;padding:1px 4px;border-radius:2px">Esc</kbd></button>
+  </div>
+  <div class="fs-body" id="fs-body">
+    <!-- content cloned here at open time -->
+  </div>
+  <div class="fs-footer">
+    <div class="fs-version-row">
+      <span class="fs-v-label"   id="fs-vlabel">—</span>
+      <span class="fs-v-badge"   id="fs-vbadge"></span>
+      <span class="fs-v-counter" id="fs-vcnt"></span>
+    </div>
+    <div class="fs-timeline">
+      <button class="fs-btn" id="fs-prev" onclick="fsStep(-1)">◀</button>
+      <div class="fs-track-wrap">
+        <div class="fs-track-bg"></div>
+        <div class="fs-track-fill" id="fs-fill"></div>
+        <div class="fs-dots-row"   id="fs-dots"></div>
+        <input type="range" class="fs-range" id="fs-range" min="0" step="1" value="0" oninput="fsSeek(this.value)">
+      </div>
+      <button class="fs-btn" id="fs-next" onclick="fsStep(1)">▶</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+
+//  type: 'mermaid' | 'text' | 'image'
+//  For 'image': content is a URL or data URI
+//  For 'text':  content is markdown-ish string
+//  For 'mermaid': content is mermaid source
+// ═══════════════════════════════════════════════════════
+const diagrams = [
+
+  // ── TILE 1: pure Mermaid (as before) ──────────────────
+  {
+    id:'core-net', title:'Core Network', defaultType:'mermaid',
+    versions:[
+      {ts:'2024-01',label:'Single core',changeType:'init',type:'mermaid',content:`graph TD
+  ISP-->FW[Firewall]
+  FW-->CORE[Core Switch]
+  CORE-->WS[Workstations]
+  CORE-->SRV[Servers]
+  style FW fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style CORE fill:#1a1a2a,stroke:#7a9ae8,color:#c8d4c8`},
+      {ts:'2024-06',label:'Distribution layer',changeType:'add',type:'mermaid',content:`graph TD
+  ISP-->FW[Firewall]
+  FW-->DIST[Distribution ★]
+  DIST-->ACC1[Access Fl.1]
+  DIST-->ACC2[Access Fl.2]
+  DIST-->SRV[Servers]
+  style FW fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style DIST fill:#1e1e2e,stroke:#e8a020,color:#e8a020`},
+      {ts:'2025-01',label:'Azure hybrid added',changeType:'add',type:'mermaid',content:`graph TD
+  ISP-->FW[Firewall]
+  ISP-->ER[ExpressRoute ★]
+  FW-->DIST[Distribution]
+  ER-->HUB[Azure Hub ★]
+  HUB-->SPOKE[Prod Spoke ★]
+  DIST-->ACC[Access Sw]
+  DIST-->SRV[Servers]
+  style FW fill:#2a1a1a,stroke:#e85050,color:#c8d4c8
+  style DIST fill:#1e1e2e,stroke:#e8a020,color:#e8a020
+  style ER fill:#1e2e1e,stroke:#3ddc84,color:#3ddc84
+  style HUB fill:#10182a,stroke:#7a9ae8,color:#7a9ae8`}
+    ]
+  },
+
+  // ── TILE 2: pure text — decision log ──────────────────
+  {
+    id:'guest-vlan', title:'Guest VLAN Decision', defaultType:'text',
+    versions:[
+      {ts:'2024-03',label:'Initial thought',changeType:'init',type:'text',content:`## Guest VLAN — should we isolate?
+
+Quick note from today's standup. Came up because a contractor asked for wifi and we weren't sure what to give them.
+
+**Problem:** contractors and guests currently land on VLAN 10 with workstations. That's not great.
+
+**Options discussed:**
+- Just firewall-policy restrict them on existing VLAN
+- Create a new VLAN 50 and put them there
+- Use the existing DMZ
+
+Haven't decided. Need to check if the AP hardware supports VLAN tagging at the access point level.`},
+      {ts:'2024-05',label:'Decision made',changeType:'change',type:'text',content:`## Guest VLAN — Decision
+
+**Decided: new VLAN 50, permit internet only.**
+
+Rationale:
+- AP hardware confirmed VLAN-capable (Cisco 9130 supports 16 SSIDs)
+- Firewall policy restriction on existing VLAN is fragile — too easy to misconfigure
+- VLAN 50 gives us a clean policy boundary at the distribution layer
+
+**Implementation notes:**
+- DHCP scope: 10.50.0.0/24
+- DNS: public resolvers only (8.8.8.8)
+- Deny: RFC1918 destinations
+- Permit: 80, 443 outbound
+- No split-tunnel, no internal resources
+
+**Open:** captive portal — defer to next quarter.`},
+      {ts:'2024-10',label:'Captive portal added',changeType:'add',type:'text',content:`## Guest VLAN — Updated
+
+VLAN 50 has been live since May with no issues.
+
+**Captive portal now implemented:**
+- Using FTD redirect policy
+- Splash page on internal server (10.99.0.15)
+- Session timeout: 8h
+- Logging to syslog
+
+**Lessons learned:**
+- Initial implementation blocked some legitimate HTTPS traffic due to SSL inspection — resolved by bypassing captive portal for known CDNs
+- Contractor onboarding time reduced from ~15min to ~2min
+
+> *"The boring network change that actually worked."*
+
+Status: **stable**. No further changes planned.`}
+    ]
+  },
+
+  // ── TILE 3: image — rack photos / whiteboard captures ──
+  {
+    id:'rack-state', title:'Rack State', defaultType:'image',
+    versions:[
+      {ts:'2024-01',label:'Pre-project baseline',changeType:'init',type:'image',
+       content:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&q=80',
+       caption:'Rack A — baseline photo Jan 2024'},
+      {ts:'2024-08',label:'Mid-project install',changeType:'change',type:'image',
+       content:'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=600&q=80',
+       caption:'Rack A — mid-project, new switches installed'},
+      {ts:'2025-02',label:'Post-project state',changeType:'add',type:'image',
+       content:'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80',
+       caption:'Rack A — final state, cabling cleaned up'}
+    ]
+  },
+
+  // ── TILE 4: MIXED — thought evolves from text → diagram ──
+  {
+    id:'fw-policy', title:'FW Policy — Evolution', defaultType:'mixed',
+    versions:[
+      {ts:'2024-02',label:'Rough idea (text)',changeType:'init',type:'text',content:`## Firewall zone rethink
+
+Been thinking about our zone model. Currently everything is basically trust/untrust with some ACLs bolted on. It's getting hard to reason about.
+
+What if we formalised it into named zones?
+
+- Untrust = internet
+- DMZ = public-facing services  
+- Trust = internal LAN
+- Mgmt = management plane (separate)
+- Maybe Azure as its own zone later?
+
+Need to draw this out properly.`},
+      {ts:'2024-04',label:'First diagram (rough)',changeType:'change',type:'mermaid',content:`graph LR
+  UNTRUST[Untrust / WAN]-->DMZ
+  DMZ-->TRUST[Trust / LAN]
+  TRUST-->|deny|UNTRUST
+  MGMT[Mgmt ★]-->TRUST
+  MGMT-->DMZ
+  style UNTRUST fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style DMZ fill:#1e1e10,stroke:#e8a020,color:#e8a020
+  style TRUST fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84
+  style MGMT fill:#10182a,stroke:#7a9ae8,color:#7a9ae8`},
+      {ts:'2024-09',label:'Refined + Azure zone',changeType:'add',type:'mermaid',content:`graph LR
+  UNTRUST[Untrust]-->DMZ
+  DMZ-->TRUST[Trust]
+  MGMT[Mgmt]-->TRUST
+  MGMT-->DMZ
+  AZURE[Azure ★]-->|ER only|TRUST
+  AZURE-->MGMT
+  GUEST[Guest ★]-->|80,443|UNTRUST
+  GUEST-->|deny|TRUST
+  style UNTRUST fill:#2a1a1a,stroke:#e85050,color:#e85050
+  style DMZ fill:#1e1e10,stroke:#e8a020,color:#e8a020
+  style TRUST fill:#1a2a1a,stroke:#3ddc84,color:#3ddc84
+  style MGMT fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style AZURE fill:#10182a,stroke:#7a9ae8,color:#7a9ae8
+  style GUEST fill:#2a1a2a,stroke:#b07ae8,color:#b07ae8`},
+      {ts:'2025-03',label:'Decision summary (text)',changeType:'change',type:'text',content:`## FW Zone Model — Signed Off
+
+Zone model has been in production since Oct 2024. Documenting final decisions here.
+
+**Zones:** Untrust · DMZ · Trust · Mgmt · Azure · Guest
+
+**Key policy decisions:**
+- Azure spoke traffic ingresses via ExpressRoute only — no internet path to Azure
+- Guest zone has no RFC1918 access at all
+- Mgmt zone reaches Trust and DMZ for administration — not reachable from Untrust
+- DMZ hosts are allowed to initiate to Trust on specific ports (1433, 443) only
+
+**What changed from the original sketch:**
+- Added Guest zone after VLAN 50 project completed
+- Azure zone added when ExpressRoute went live
+
+**Status:** stable. Review scheduled Q3 2025.`}
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+//  GLOBAL TIMELINE
+// ═══════════════════════════════════════════════════════
+const allTs = [...new Set(diagrams.flatMap(d=>d.versions.map(v=>v.ts)))].sort();
+let masterIdx=0, playing=false, playTimer=null, speedIdx=0;
+const speeds=[1,2,0.5], speedLbls=['1×','2×','½×'], BASE_MS=2400;
+
+const tileState={};
+diagrams.forEach(d=>{tileState[d.id]={curIdx:0,detached:false,showSrc:false};});
+
+// ── LAYOUT ────────────────────────────────────────────
+const DEFAULT_LAYOUT={
+  'core-net':   {x:40,  y:40,  w:420,h:380},
+  'guest-vlan': {x:480, y:40,  w:420,h:380},
+  'rack-state': {x:40,  y:450, w:420,h:360},
+  'fw-policy':  {x:480, y:450, w:420,h:380},
+};
+function loadLayout(){try{const r=localStorage.getItem('arch-v4-layout');return r?JSON.parse(r):null;}catch{return null;}}
+function saveLayout(){
+  const lay={};
+  diagrams.forEach(d=>{const el=document.getElementById(`tile-${d.id}`);if(el)lay[d.id]={x:parseInt(el.style.left)||0,y:parseInt(el.style.top)||0,w:el.offsetWidth,h:el.offsetHeight};});
+  try{localStorage.setItem('arch-v4-layout',JSON.stringify(lay));}catch{}
+}
+function resetLayout(){
+  try{localStorage.removeItem('arch-v4-layout');}catch{}
+  diagrams.forEach(d=>{const el=document.getElementById(`tile-${d.id}`);if(!el)return;const def=DEFAULT_LAYOUT[d.id]||{x:40,y:40,w:420,h:380};el.style.left=def.x+'px';el.style.top=def.y+'px';el.style.width=def.w+'px';el.style.height=def.h+'px';});
+  updateMinimap();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MERMAID
+// ═══════════════════════════════════════════════════════
+mermaid.initialize({
+  startOnLoad:false,theme:'dark',
+  themeVariables:{background:'#111312',mainBkg:'#161918',nodeBorder:'#252a28',lineColor:'#3a4a3a',edgeLabelBackground:'#111312',titleColor:'#c2cec2'},
+  flowchart:{curve:'basis',htmlLabels:true,useMaxWidth:true}
+});
+
+// ═══════════════════════════════════════════════════════
+//  MASTER SLIDER
+// ═══════════════════════════════════════════════════════
+function buildMasterSlider(){const r=document.getElementById('master-range');r.max=allTs.length-1;r.value=masterIdx;updateMasterUI();}
+function updateMasterUI(){const pct=allTs.length>1?(masterIdx/(allTs.length-1))*100:0;document.getElementById('master-fill').style.width=pct+'%';document.getElementById('master-date').textContent=allTs[masterIdx];document.getElementById('master-range').value=masterIdx;}
+function onMasterInput(val){masterIdx=parseInt(val);updateMasterUI();applySyncedTiles();}
+function versionIdxAtTime(diag,ts){let b=0;diag.versions.forEach((v,i)=>{if(v.ts<=ts)b=i;});return b;}
+function applySyncedTiles(animate=true){
+  diagrams.forEach(d=>{
+    const st=tileState[d.id];if(st.detached)return;
+    const ni=versionIdxAtTime(d,allTs[masterIdx]);
+    if(ni!==st.curIdx){st.curIdx=ni;renderTile(d.id,animate);flashTile(d.id);}
+    else updateTileUI(d.id);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TILE BUILDING
+// ═══════════════════════════════════════════════════════
+function buildTiles(){
+  const canvas=document.getElementById('canvas-inner');
+  const saved=loadLayout();
+  canvas.innerHTML='';
+  let topZ=10;
+  diagrams.forEach((d,i)=>{
+    const lay=(saved&&saved[d.id])?saved[d.id]:(DEFAULT_LAYOUT[d.id]||{x:40+i*440,y:40,w:420,h:380});
+    const tile=document.createElement('div');
+    tile.className='tile';
+    tile.id=`tile-${d.id}`;
+    tile.dataset.type=d.defaultType;
+    tile.style.cssText=`left:${lay.x}px;top:${lay.y}px;width:${lay.w}px;height:${lay.h}px;z-index:${topZ+i}`;
+    tile.innerHTML=`
+      <div class="tile-head" id="head-${d.id}">
+        <span class="tile-drag-icon">⠿⠿</span>
+        <div class="tile-title-block">
+          <div class="tile-title">${d.title}</div>
+          <span class="tile-type-chip chip-${d.defaultType}" id="typechip-${d.id}">${d.defaultType}</span>
+        </div>
+        <div class="tile-head-right">
+          <button class="src-btn" id="srcbtn-${d.id}" onclick="toggleSource('${d.id}')">⌥ src</button>
+          <button class="src-btn" onclick="openFullscreen('${d.id}')" title="Fullscreen">⤢</button>
+          <span class="sync-badge synced" id="badge-${d.id}" onclick="toggleDetach('${d.id}')">synced</span>
+        </div>
+      </div>
+      <div class="tile-body">
+        <div class="render-mermaid active" id="rm-${d.id}"></div>
+        <div class="render-text"   id="rt-${d.id}"><div class="text-body" id="rtb-${d.id}"></div></div>
+        <div class="render-image"  id="ri-${d.id}">
+          <img id="rimg-${d.id}" src="" alt="">
+          <div class="img-caption" id="rcap-${d.id}"></div>
+        </div>
+        <div class="render-source" id="rs-${d.id}"><pre id="rsp-${d.id}"></pre></div>
+      </div>
+      <div class="tile-footer">
+        <div class="tile-version-row">
+          <span class="tile-v-label" id="vlabel-${d.id}">—</span>
+          <span class="tile-v-type"  id="vtype-${d.id}"></span>
+          <span class="tile-v-badge" id="vbadge-${d.id}"></span>
+          <span class="tile-v-counter" id="vcnt-${d.id}"></span>
+        </div>
+        <div class="mini-timeline">
+          <button class="mini-btn" id="mprev-${d.id}" onclick="tileStep('${d.id}',-1)">◀</button>
+          <div class="mini-track-wrap">
+            <div class="mini-track-bg"></div>
+            <div class="mini-track-fill" id="mfill-${d.id}"></div>
+            <div class="mini-dots-row"   id="mdots-${d.id}"></div>
+            <input type="range" class="mini-range" id="mrange-${d.id}" min="0" max="${d.versions.length-1}" step="1" value="0" oninput="onTileRange('${d.id}',this.value)">
+          </div>
+          <button class="mini-btn" id="mnext-${d.id}" onclick="tileStep('${d.id}',1)">▶</button>
+        </div>
+      </div>
+      <div class="resize-handle" id="rh-${d.id}"></div>`;
+    canvas.appendChild(tile);
+    attachDrag(d.id);
+    attachResize(d.id);
+  });
+  buildMinimap();
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDERERS — switch on version type
+// ═══════════════════════════════════════════════════════
+function showPane(id, pane){
+  // pane: 'mermaid' | 'text' | 'image' | 'source'
+  ['rm','rt','ri','rs'].forEach(p=>{
+    document.getElementById(`${p}-${id}`)?.classList.remove('active');
+  });
+  const map={mermaid:'rm',text:'rt',image:'ri',source:'rs'};
+  document.getElementById(`${map[pane]}-${id}`)?.classList.add('active');
+  // update tile data-type for border colour
+  const v=diagrams.find(d=>d.id===id).versions[tileState[id].curIdx];
+  if(pane!=='source') document.getElementById(`tile-${id}`).dataset.type=v.type;
+}
+
+async function renderTile(id, animate=true){
+  const d=diagrams.find(x=>x.id===id);
+  const st=tileState[id];
+  const v=d.versions[st.curIdx];
+
+  if(st.showSrc){
+    // source mode — just update pre text, no animation needed
+    document.getElementById(`rsp-${id}`).textContent=v.content.trim();
+    updateTileUI(id);
+    return;
+  }
+
+  if(animate){
+    // fade whichever pane is active
+    ['rm','rt','ri'].forEach(p=>{
+      document.getElementById(`${p}-${id}`)?.classList.add('fading');
+    });
+    await new Promise(r=>setTimeout(r,120));
+  }
+
+  if(v.type==='mermaid'){
+    try{
+      const uid=`mm-${id}-${Date.now()}`;
+      const{svg}=await mermaid.render(uid,v.content);
+      document.getElementById(`rm-${id}`).innerHTML=svg;
+    }catch(e){
+      document.getElementById(`rm-${id}`).innerHTML=`<div style="font-size:9px;color:var(--red);padding:12px">⚠ ${e.message}</div>`;
+    }
+    showPane(id,'mermaid');
+  } else if(v.type==='text'){
+    document.getElementById(`rtb-${id}`).innerHTML=simpleMarkdown(v.content);
+    showPane(id,'text');
+  } else if(v.type==='image'){
+    document.getElementById(`rimg-${id}`).src=v.content;
+    document.getElementById(`rcap-${id}`).textContent=v.caption||'';
+    showPane(id,'image');
+  }
+
+  ['rm','rt','ri'].forEach(p=>{
+    document.getElementById(`${p}-${id}`)?.classList.remove('fading');
+  });
+
+  document.getElementById(`rsp-${id}`).textContent=v.content.trim();
+  updateTileUI(id);
+}
+
+// Very lightweight markdown → HTML (no external dep)
+function simpleMarkdown(md){
+  return md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/^---$/gm,'<hr>')
+    .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/^\- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs,'<ul>$1</ul>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/^(?!<[hublp])/gm,'<p>')
+    .replace(/(?<![>])$/gm,'</p>')
+    .replace(/<p><\/p>/g,'')
+    .replace(/<p>(<h[123]|<ul|<hr|<blockquote)/g,'$1')
+    .replace(/(<\/h[123]>|<\/ul>|<hr>|<\/blockquote>)<\/p>/g,'$1');
+}
+
+// ═══════════════════════════════════════════════════════
+//  TILE UI UPDATE
+// ═══════════════════════════════════════════════════════
+function updateTileUI(id){
+  const d=diagrams.find(x=>x.id===id);
+  const st=tileState[id];
+  const v=d.versions[st.curIdx];
+  const n=d.versions.length;
+
+  document.getElementById(`vlabel-${id}`).textContent=v.label;
+  document.getElementById(`vcnt-${id}`).textContent=`${st.curIdx+1}/${n}`;
+
+  const vtype=document.getElementById(`vtype-${id}`);
+  vtype.textContent=v.type;
+  vtype.className=`tile-v-type chip-${v.type}`;
+
+  const bEl=document.getElementById(`vbadge-${id}`);
+  bEl.className=`tile-v-badge badge-${v.changeType}`;
+  bEl.textContent={init:'init',add:'+add',change:'~chg',remove:'−rem'}[v.changeType];
+
+  // update type chip in header
+  const chip=document.getElementById(`typechip-${id}`);
+  chip.textContent=v.type;
+  chip.className=`tile-type-chip chip-${v.type}`;
+
+  const pct=n>1?(st.curIdx/(n-1))*100:0;
+  document.getElementById(`mfill-${id}`).style.width=pct+'%';
+  document.getElementById(`mrange-${id}`).value=st.curIdx;
+
+  const dotsEl=document.getElementById(`mdots-${id}`);
+  dotsEl.innerHTML='';
+  d.versions.forEach((ver,i)=>{
+    const dot=document.createElement('div');
+    dot.className='mini-dot'+(i===st.curIdx?' cur':i<st.curIdx?' past':'');
+    dot.dataset.type=ver.type;
+    dot.onclick=e=>{e.stopPropagation();tileGoTo(id,i);};
+    dotsEl.appendChild(dot);
+  });
+
+  document.getElementById(`mprev-${id}`).disabled=st.curIdx===0;
+  document.getElementById(`mnext-${id}`).disabled=st.curIdx===n-1;
+}
+
+function flashTile(id){const t=document.getElementById(`tile-${id}`);t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash');setTimeout(()=>t.classList.remove('flash'),800);}
+
+// ═══════════════════════════════════════════════════════
+//  SOURCE TOGGLE
+// ═══════════════════════════════════════════════════════
+function toggleSource(id){
+  const st=tileState[id];
+  st.showSrc=!st.showSrc;
+  const btn=document.getElementById(`srcbtn-${id}`);
+  btn.classList.toggle('active',st.showSrc);
+  btn.textContent=st.showSrc?'⌥ view':'⌥ src';
+  if(st.showSrc){showPane(id,'source');}
+  else{renderTile(id,false);}
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAG
+// ═══════════════════════════════════════════════════════
+function attachDrag(id){
+  const head=document.getElementById(`head-${id}`);
+  const tile=document.getElementById(`tile-${id}`);
+  let sx,sy,ox,oy,topZ=100;
+  head.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('sync-badge')||e.target.classList.contains('src-btn'))return;
+    e.preventDefault();
+    sx=e.clientX;sy=e.clientY;ox=parseInt(tile.style.left)||0;oy=parseInt(tile.style.top)||0;
+    tile.classList.add('dragging');tile.style.zIndex=++topZ;
+    const mv=e=>{tile.style.left=Math.max(0,ox+(e.clientX-sx))+'px';tile.style.top=Math.max(0,oy+(e.clientY-sy))+'px';updateMinimap();};
+    const up=()=>{tile.classList.remove('dragging');saveLayout();updateMinimap();document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+  tile.addEventListener('mousedown',()=>tile.style.zIndex=++topZ);
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESIZE
+// ═══════════════════════════════════════════════════════
+function attachResize(id){
+  const handle=document.getElementById(`rh-${id}`);
+  const tile=document.getElementById(`tile-${id}`);
+  let sx,sy,ow,oh,t;
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault();e.stopPropagation();
+    sx=e.clientX;sy=e.clientY;ow=tile.offsetWidth;oh=tile.offsetHeight;
+    tile.classList.add('resizing');
+    const mv=e=>{
+      tile.style.width=Math.max(280,ow+(e.clientX-sx))+'px';
+      tile.style.height=Math.max(260,oh+(e.clientY-sy))+'px';
+      updateMinimap();
+      clearTimeout(t);t=setTimeout(()=>renderTile(id,false),350);
+    };
+    const up=()=>{tile.classList.remove('resizing');saveLayout();updateMinimap();renderTile(id,false);document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TILE CONTROLS
+// ═══════════════════════════════════════════════════════
+function toggleDetach(id){
+  const st=tileState[id];st.detached=!st.detached;
+  const tile=document.getElementById(`tile-${id}`);
+  const badge=document.getElementById(`badge-${id}`);
+  if(st.detached){tile.classList.replace('synced','detached');badge.className='sync-badge detached';badge.textContent='detached';}
+  else{tile.classList.replace('detached','synced');badge.className='sync-badge synced';badge.textContent='synced';st.curIdx=versionIdxAtTime(diagrams.find(d=>d.id===id),allTs[masterIdx]);renderTile(id);}
+}
+function syncAll(){
+  diagrams.forEach(d=>{
+    const st=tileState[d.id];if(!st.detached)return;
+    st.detached=false;
+    document.getElementById(`tile-${d.id}`).classList.replace('detached','synced');
+    const badge=document.getElementById(`badge-${d.id}`);badge.className='sync-badge synced';badge.textContent='synced';
+    st.curIdx=versionIdxAtTime(d,allTs[masterIdx]);renderTile(d.id);
+  });
+}
+function tileGoTo(id,idx){
+  const st=tileState[id];const diag=diagrams.find(d=>d.id===id);
+  if(!st.detached){st.detached=true;document.getElementById(`tile-${id}`).classList.replace('synced','detached');const badge=document.getElementById(`badge-${id}`);badge.className='sync-badge detached';badge.textContent='detached';}
+  st.curIdx=Math.max(0,Math.min(diag.versions.length-1,idx));renderTile(id);
+}
+function tileStep(id,d){tileGoTo(id,tileState[id].curIdx+d);}
+function onTileRange(id,val){tileGoTo(id,parseInt(val));}
+
+// ═══════════════════════════════════════════════════════
+//  PLAYBACK
+// ═══════════════════════════════════════════════════════
+function togglePlay(){
+  playing=!playing;const btn=document.getElementById('btn-play');
+  if(playing){btn.textContent='⏸';btn.classList.add('active');scheduleNext();}
+  else{btn.textContent='▶';btn.classList.remove('active');clearTimeout(playTimer);}
+}
+function scheduleNext(){if(!playing)return;playTimer=setTimeout(()=>{masterIdx=(masterIdx+1)%allTs.length;updateMasterUI();applySyncedTiles();scheduleNext();},BASE_MS/speeds[speedIdx]);}
+function cycleSpeed(){speedIdx=(speedIdx+1)%speeds.length;document.getElementById('btn-speed').textContent=speedLbls[speedIdx];if(playing){clearTimeout(playTimer);scheduleNext();}}
+
+// ═══════════════════════════════════════════════════════
+//  MINIMAP
+// ═══════════════════════════════════════════════════════
+function buildMinimap(){const mm=document.getElementById('minimap');mm.querySelectorAll('.minimap-dot').forEach(e=>e.remove());diagrams.forEach(d=>{const dot=document.createElement('div');dot.className='minimap-dot';dot.id=`mm-dot-${d.id}`;mm.appendChild(dot);});updateMinimap();}
+function updateMinimap(){
+  const CW=2600,CH=1800,MW=160,MH=100,sx=MW/CW,sy=MH/CH;
+  diagrams.forEach(d=>{const tile=document.getElementById(`tile-${d.id}`);const dot=document.getElementById(`mm-dot-${d.id}`);if(!tile||!dot)return;dot.style.left=(parseInt(tile.style.left)||0)*sx+'px';dot.style.top=(parseInt(tile.style.top)||0)*sy+'px';dot.style.width=tile.offsetWidth*sx+'px';dot.style.height=tile.offsetHeight*sy+'px';});
+  const outer=document.getElementById('canvas-outer');const vp=document.getElementById('minimap-vp');vp.style.left=outer.scrollLeft*sx+'px';vp.style.top=outer.scrollTop*sy+'px';vp.style.width=outer.clientWidth*sx+'px';vp.style.height=outer.clientHeight*sy+'px';
+}
+document.getElementById('canvas-outer').addEventListener('scroll',updateMinimap);
+
+// keyboard
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight'){masterIdx=Math.min(allTs.length-1,masterIdx+1);updateMasterUI();applySyncedTiles();}
+  if(e.key==='ArrowLeft') {masterIdx=Math.max(0,masterIdx-1);updateMasterUI();applySyncedTiles();}
+  if(e.key===' ')         {togglePlay();e.preventDefault();}
+});
+
+// ═══════════════════════════════════════════════════════
+//  FULLSCREEN
+let fsId = null; // which tile is fullscreen
+let fsIdx = 0;   // current version index in fs
+
+
+// ═══════════════════════════════════════════════════════
+
+function openFullscreen(id) {
+  fsId  = id;
+  fsIdx = tileState[id].curIdx;
+  document.getElementById('fs-overlay').classList.add('open');
+  const d = diagrams.find(x=>x.id===id);
+  document.getElementById('fs-title').textContent    = d.title;
+  document.getElementById('fs-range').max            = d.versions.length - 1;
+  renderFs(false);
+}
+
+function closeFullscreen() {
+  document.getElementById('fs-overlay').classList.remove('open');
+  document.getElementById('fs-body').innerHTML = '';
+  fsId = null;
+}
+
+function fsStep(delta) {
+  if (!fsId) return;
+  const d = diagrams.find(x=>x.id===fsId);
+  fsIdx = Math.max(0, Math.min(d.versions.length-1, fsIdx+delta));
+  renderFs(true);
+}
+
+function fsSeek(val) {
+  fsIdx = parseInt(val);
+  renderFs(true);
+}
+
+async function renderFs(animate) {
+  if (!fsId) return;
+  const d = diagrams.find(x=>x.id===fsId);
+  const v = d.versions[fsIdx];
+  const n = d.versions.length;
+  const body = document.getElementById('fs-body');
+
+  // subtitle
+  document.getElementById('fs-subtitle').textContent = `${v.ts} · ${v.type}`;
+
+  // footer UI
+  document.getElementById('fs-vlabel').textContent = v.label;
+  document.getElementById('fs-vcnt').textContent   = `${fsIdx+1} / ${n}`;
+  const badge = document.getElementById('fs-vbadge');
+  badge.className = `fs-v-badge badge-${v.changeType}`;
+  badge.textContent = {init:'init',add:'+add',change:'~chg',remove:'−rem'}[v.changeType];
+
+  const pct = n>1 ? (fsIdx/(n-1))*100 : 0;
+  document.getElementById('fs-fill').style.width = pct+'%';
+  document.getElementById('fs-range').value      = fsIdx;
+
+  const dotsEl = document.getElementById('fs-dots');
+  dotsEl.innerHTML = '';
+  d.versions.forEach((ver,i) => {
+    const dot = document.createElement('div');
+    dot.className = 'fs-dot'+(i===fsIdx?' cur':i<fsIdx?' past':'');
+    dot.dataset.type = ver.type;
+    const lbl = document.createElement('div');
+    lbl.className = 'fs-dot-label';
+    lbl.textContent = ver.ts;
+    dot.appendChild(lbl);
+    dot.onclick = () => { fsIdx=i; renderFs(true); };
+    dotsEl.appendChild(dot);
+  });
+
+  document.getElementById('fs-prev').disabled = fsIdx===0;
+  document.getElementById('fs-next').disabled = fsIdx===n-1;
+
+  // render content
+  if (animate) { body.style.opacity='0'; await new Promise(r=>setTimeout(r,120)); }
+
+  if (v.type === 'mermaid') {
+    try {
+      const uid = `fs-mm-${Date.now()}`;
+      const {svg} = await mermaid.render(uid, v.content);
+      body.innerHTML = svg;
+    } catch(e) {
+      body.innerHTML = `<div style="color:var(--red);font-size:11px">⚠ ${e.message}</div>`;
+    }
+    // let SVG fill the space
+    const svg = body.querySelector('svg');
+    if (svg) { svg.style.maxWidth='90vw'; svg.style.maxHeight='80vh'; svg.style.height='auto'; }
+
+  } else if (v.type === 'text') {
+    body.innerHTML = `<div class="render-text active" style="position:relative;width:min(800px,90vw);max-height:80vh;overflow:auto;padding:24px 32px;background:var(--bg);border-radius:4px;border:1px solid var(--border)"><div class="text-body" style="font-size:13px;line-height:1.8">${simpleMarkdown(v.content)}</div></div>`;
+
+  } else if (v.type === 'image') {
+    body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:10px"><img src="${v.content}" style="max-width:90vw;max-height:78vh;object-fit:contain;border-radius:3px"><div style="font-size:9px;color:var(--text-dim);letter-spacing:0.06em">${v.caption||''}</div></div>`;
+  }
+
+  if (animate) { body.style.opacity=''; }
+}
+
+// keyboard in fullscreen
+document.addEventListener('keydown', e => {
+  if (!fsId) return;
+  if (e.key==='Escape')     { closeFullscreen(); return; }
+  if (e.key==='ArrowRight') { fsStep(1);  e.preventDefault(); }
+  if (e.key==='ArrowLeft')  { fsStep(-1); e.preventDefault(); }
+});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+buildMasterSlider();
+buildTiles();
+(async()=>{for(const d of diagrams)await renderTile(d.id,false);applySyncedTiles(false);})();
+</script>
+</body>
+</html>
