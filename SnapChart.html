@@ -7,14 +7,25 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0b0d0c;color:#c2cec2;font-family:'IBM Plex Mono',monospace;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
-body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.025) 3px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9999}
+body{background:#0b0d0c;color:#c2cec2;font-family:'IBM Plex Mono',monospace;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.025) 3px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9998}
 
-.hdr{display:flex;align-items:baseline;gap:14px;padding:11px 20px;background:#111312;border-bottom:1px solid #1c1f1e;flex-shrink:0}
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#111312;border-bottom:1px solid #1c1f1e;flex-shrink:0;gap:16px}
+.hdr-left{display:flex;align-items:baseline;gap:12px}
 .hdr-name{font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:#e8a020}
 .hdr-sub{font-size:9px;color:#455045;letter-spacing:.07em}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.hbtn{font-size:9px;padding:4px 10px;background:transparent;border:1px solid #252a28;color:#7a8a7a;font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all .12s}
+.hbtn:hover{border-color:#e8a020;color:#e8a020}
+.hbtn.green{border-color:#174d30;color:#3ddc84}
+.hbtn.green:hover{background:rgba(61,220,132,.06);border-color:#3ddc84}
+.hbtn:disabled{opacity:.3;cursor:not-allowed}
+.hist-badge{font-size:8px;padding:2px 7px;border-radius:2px;background:#2a1a00;border:1px solid #5a4010;color:#e8a020;letter-spacing:.08em;display:none}
+.hist-badge.show{display:inline-block}
 
-.bc{display:flex;align-items:center;padding:8px 20px;background:#111312;border-bottom:1px solid #1c1f1e;gap:0;min-height:38px}
+/* ── BREADCRUMB ── */
+.bc{display:flex;align-items:center;padding:7px 20px;background:#111312;border-bottom:1px solid #1c1f1e;gap:0;min-height:36px;flex-shrink:0}
 .bc-back{font-size:9px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:3px 9px;border:1px solid #252a28;border-radius:2px;color:#7a8a7a;background:transparent;font-family:'IBM Plex Mono',monospace;transition:all .12s;margin-right:12px;white-space:nowrap}
 .bc-back:hover{border-color:#e8a020;color:#e8a020}
 .bc-back.hidden{visibility:hidden;pointer-events:none}
@@ -23,83 +34,138 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .bc-item.cur{color:#c2cec2;cursor:default}
 .bc-sep{font-size:10px;color:#252a28;padding:0 5px}
 
-.canvas{flex:1;overflow:auto;padding:28px 24px;transition:opacity .18s;background:#0b0d0c;background-image:radial-gradient(circle,#1c201e 1px,transparent 1px);background-size:28px 28px}
+/* ── CANVAS ── */
+.canvas{flex:1;overflow:auto;padding:28px 24px;transition:opacity .18s;background:#0b0d0c;background-image:radial-gradient(circle,#1c201e 1px,transparent 1px);background-size:28px 28px;position:relative}
 .canvas::-webkit-scrollbar{width:6px;height:6px}
 .canvas::-webkit-scrollbar-track{background:transparent}
 .canvas::-webkit-scrollbar-thumb{background:#252a28;border-radius:3px}
-
 .svg-wrap{max-width:680px;margin:0 auto}
 svg{display:block;overflow:visible}
 
-.nd-expand{cursor:pointer}
-.nd-expand:hover .nd-rect{stroke:#6a9abb!important;fill:#131e28!important}
-.nd-process:hover .nd-rect,.nd-start:hover .nd-rect,.nd-end:hover .nd-rect{opacity:.88}
-.nd-decision:hover polygon{opacity:.85}
-
-/* anchor node shown above drilled flow */
-.anchor-wrap{max-width:680px;margin:0 auto 0;display:flex;flex-direction:column;align-items:center;gap:0}
+/* ── ANCHOR (entry node shown above drilled flow) ── */
+.anchor-outer{max-width:680px;margin:0 auto 0;display:flex;flex-direction:column;align-items:center}
 .anchor-node{display:flex;align-items:center;gap:9px;padding:7px 18px;background:#0b1520;border:1px dashed #2a4a6a;border-radius:4px;cursor:pointer;transition:all .14s;user-select:none}
 .anchor-node:hover{background:#111e2e;border-color:#4a7aaa}
-.anchor-node-label{font-size:10px;font-weight:500;letter-spacing:.06em;color:#7a9ae8;font-family:'IBM Plex Mono',monospace}
-.anchor-node-from{font-size:8px;color:#455045;letter-spacing:.07em;font-family:'IBM Plex Mono',monospace}
-.anchor-arrow{width:2px;height:22px;background:linear-gradient(to bottom,#2a4a6a,#1c1f1e);margin:0 auto}
-.anchor-hidden{display:none}
+.anchor-label{font-size:10px;font-weight:500;letter-spacing:.06em;color:#7a9ae8}
+.anchor-from{font-size:8px;color:#455045;letter-spacing:.07em}
+.anchor-arr{width:2px;height:22px;background:linear-gradient(to bottom,#2a4a6a,#1c1f1e);margin:0 auto}
+#anchor-wrap{display:none}
 
-/* ghost minimap of parent flow */
-.ghost-wrap{position:absolute;top:12px;right:12px;width:160px;pointer-events:none;opacity:.22;transition:opacity .2s}
-.ghost-wrap:hover{opacity:.5;pointer-events:all;cursor:pointer}
-.ghost-label{font-size:8px;color:#455045;letter-spacing:.08em;text-align:center;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase}
+/* ── GHOST MINIMAP ── */
+.ghost-wrap{position:absolute;top:12px;right:12px;width:150px;opacity:.2;transition:opacity .2s;cursor:pointer}
+.ghost-wrap:hover{opacity:.48}
+.ghost-ttl{font-size:8px;color:#455045;letter-spacing:.08em;text-align:center;margin-bottom:4px;text-transform:uppercase}
 
-.canvas{position:relative}
+/* ── ADD NODE BAR ── */
+.add-bar{max-width:680px;margin:12px auto 0;display:flex;justify-content:center}
+.add-btn{font-size:9px;padding:5px 14px;background:transparent;border:1px dashed #252a28;color:#455045;font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all .14s}
+.add-btn:hover{border-color:#2a4a6a;color:#7a9ae8}
+.add-btn:disabled{opacity:.25;cursor:not-allowed}
 
-.leg{flex-shrink:0;padding:5px 20px;background:#111312;border-top:1px solid #1c1f1e;display:flex;gap:20px;flex-wrap:wrap}
-.leg-i{display:flex;align-items:center;gap:6px;font-size:8px;color:#455045;letter-spacing:.06em}
-.sw{width:14px;height:10px;border-radius:1px;border:1px solid;display:inline-block}
-.sw-exp{border-style:dashed}
+/* ── TIMELINE BAR ── */
+.tl-bar{flex-shrink:0;background:#111312;border-top:1px solid #1c1f1e;padding:10px 20px 12px}
+.tl-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.tl-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#455045;white-space:nowrap}
+.tl-track{flex:1;position:relative;height:36px;display:flex;align-items:center}
+.tl-line{position:absolute;left:0;right:0;height:1px;background:#1c1f1e}
+.tl-dots{position:absolute;left:0;right:0;display:flex;justify-content:space-between;align-items:center}
+.tl-dot{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 0}
+.tl-dot-c{width:10px;height:10px;border-radius:50%;border:1px solid #252a28;background:#0b0d0c;transition:all .15s}
+.tl-dot:hover .tl-dot-c{border-color:#455045;background:#1c1f1e}
+.tl-dot.past .tl-dot-c{background:#2a3a2a;border-color:#2a4a2a}
+.tl-dot.active .tl-dot-c{background:#e8a020;border-color:#e8a020;box-shadow:0 0 6px #6a4a10}
+.tl-dot.live-dot .tl-dot-c{background:#3ddc84;border-color:#3ddc84;box-shadow:0 0 6px #174d30}
+.tl-dot-ts{font-size:8px;color:#455045;letter-spacing:.05em;white-space:nowrap}
+.tl-dot.active .tl-dot-ts{color:#e8a020}
+.tl-dot.live-dot .tl-dot-ts{color:#3ddc84}
+.tl-nav{font-size:12px;padding:3px 8px;background:transparent;border:1px solid #1c1f1e;color:#455045;font-family:'IBM Plex Mono',monospace;cursor:pointer;border-radius:2px;transition:all .12s;line-height:1}
+.tl-nav:hover{border-color:#252a28;color:#7a8a7a}
+.tl-nav:disabled{opacity:.25;cursor:not-allowed}
+.tl-desc-row{display:flex;align-items:center;justify-content:space-between}
+.tl-snap-desc{font-size:9px;color:#455045;letter-spacing:.06em;font-style:italic}
+.tl-legend{display:flex;gap:14px}
+.leg-i{display:flex;align-items:center;gap:5px;font-size:8px;color:#455045;letter-spacing:.05em}
+.sw{width:12px;height:9px;border-radius:1px;border:1px solid;display:inline-block}
+
+/* ── EDIT OVERLAY ── */
+#edit-overlay{position:fixed;z-index:1000;display:none}
+#edit-input{background:#0b1828;border:1px solid #4a7aaa;color:#c2cec2;font-family:'IBM Plex Mono',monospace;padding:3px 6px;outline:none;border-radius:2px;text-align:center}
+
+/* ── NODE HOVERS ── */
+.nd-expand{cursor:pointer}
+.nd-expand:hover .nd-rect{stroke:#6a9abb!important;fill:#131e28!important}
+.nd-proc:hover .nd-rect,.nd-start:hover .nd-rect,.nd-end:hover .nd-rect{opacity:.88}
+.nd-dec:hover polygon{opacity:.85}
+.nd-editable{cursor:text}
+.nd-editable:hover .nd-rect{stroke:#3a3a4a!important}
 </style>
 </head>
 <body>
 
 <div class="hdr">
-  <span class="hdr-name">Flow Explorer</span>
-  <span class="hdr-sub">click expandable nodes ( ⊕ ) to drill into sub-flows · Esc to go back</span>
+  <div class="hdr-left">
+    <span class="hdr-name">Flow Explorer</span>
+    <span class="hdr-sub">dbl-click node to rename · ⊕ to drill · Esc to go back</span>
+  </div>
+  <div class="hdr-right">
+    <span class="hist-badge" id="hist-badge">History view</span>
+    <button class="hbtn" id="btn-return" style="display:none" onclick="returnToLive()">Return to live ↑</button>
+    <button class="hbtn green" id="btn-snapshot" onclick="saveSnapshot()">⊕ Snapshot</button>
+  </div>
 </div>
 
-<div class="bc" id="bc">
-  <button class="bc-back hidden" id="bc-back" onclick="goBack()">← Back</button>
-</div>
+<div class="bc" id="bc"></div>
 
 <div class="canvas" id="canvas">
-  <div class="anchor-hidden" id="anchor-wrap">
-    <div class="anchor-wrap">
-      <div class="anchor-node" id="anchor-node" onclick="goBack()">
-        <span style="font-size:11px;color:#2a4a6a">&#8592;</span>
+  <div id="anchor-wrap">
+    <div class="anchor-outer">
+      <div class="anchor-node" onclick="goBack()">
+        <span style="font-size:11px;color:#2a4a6a">←</span>
         <div>
-          <div class="anchor-node-from">entered from</div>
-          <div class="anchor-node-label" id="anchor-label">&#8212;</div>
+          <div class="anchor-from">entered from</div>
+          <div class="anchor-label" id="anchor-label">—</div>
         </div>
-        <span style="font-size:9px;color:#2a4a6a;margin-left:4px;font-family:'IBM Plex Mono',monospace">click to return</span>
+        <span style="font-size:9px;color:#2a4a6a;margin-left:4px">click to return</span>
       </div>
-      <div class="anchor-arrow"></div>
+      <div class="anchor-arr"></div>
     </div>
   </div>
   <div style="position:relative">
     <div class="svg-wrap" id="svg-wrap"></div>
-    <div class="ghost-wrap" id="ghost-wrap" style="display:none" onclick="goBack()" title="Return to parent flow">
-      <div class="ghost-label">&#8593; parent flow</div>
+    <div class="ghost-wrap" id="ghost-wrap" style="display:none" onclick="goBack()">
+      <div class="ghost-ttl">↑ parent flow</div>
       <div id="ghost-svg"></div>
+    </div>
+  </div>
+  <div class="add-bar"><button class="add-btn" id="add-btn" onclick="addNode()">+ add step</button></div>
+</div>
+
+<div class="tl-bar">
+  <div class="tl-row">
+    <span class="tl-title">Timeline</span>
+    <div class="tl-track">
+      <div class="tl-line"></div>
+      <div class="tl-dots" id="tl-dots"></div>
+    </div>
+    <button class="tl-nav" id="tl-prev" onclick="tlStep(-1)">←</button>
+    <button class="tl-nav" id="tl-next" onclick="tlStep(1)">→</button>
+  </div>
+  <div class="tl-desc-row">
+    <span class="tl-snap-desc" id="tl-desc">—</span>
+    <div class="tl-legend">
+      <span class="leg-i"><span class="sw" style="background:#0e1820;border-color:#2a4a6a;border-style:dashed"></span>expandable</span>
+      <span class="leg-i"><span class="sw" style="background:#1a1a0a;border-color:#5a4010;transform:rotate(45deg)"></span>decision</span>
+      <span class="leg-i"><span class="sw" style="background:#1a2a1a;border-color:#3ddc84;border-radius:5px"></span>start/end</span>
     </div>
   </div>
 </div>
 
-<div class="leg">
-  <span class="leg-i"><span class="sw sw-exp" style="background:#0e1820;border-color:#2a4a6a"></span>expandable — click to drill down</span>
-  <span class="leg-i"><span class="sw" style="background:#1a1a0a;border-color:#5a4010;transform:rotate(45deg)"></span>decision</span>
-  <span class="leg-i"><span class="sw" style="background:#161918;border-color:#252a28"></span>process step</span>
-  <span class="leg-i"><span class="sw" style="background:#1a2a1a;border-color:#3ddc84;border-radius:5px"></span>start / end</span>
-</div>
+<div id="edit-overlay"><input id="edit-input" type="text" /></div>
 
 <script>
+// ═══════════════════════════════════════════════════════
+//  NODE GEOMETRY + COLORS
+// ═══════════════════════════════════════════════════════
 const D={
   start:   {w:140,h:38,hw:70,hh:19},
   end:     {w:140,h:38,hw:70,hh:19},
@@ -107,7 +173,6 @@ const D={
   expand:  {w:160,h:44,hw:80,hh:22},
   decision:{w:190,h:70,hw:95,hh:35},
 };
-
 const C={
   start:   {f:'#1a2a1a',s:'#3ddc84',t:'#3ddc84'},
   end:     {f:'#10182a',s:'#5a7aaa',t:'#7a9ae8'},
@@ -115,112 +180,208 @@ const C={
   expand:  {f:'#0e1820',s:'#2a4a6a',t:'#7a9ae8'},
   decision:{f:'#1a1a0a',s:'#5a4010',t:'#e8a020'},
 };
-
 const EC='#2a3a2a', LC='#455045';
 
-const FLOWS={
-  root:{
-    title:'Email processing pipeline',
-    nodes:[
-      {id:'start',    x:340,y:60,  type:'start',   label:'Incoming email'},
-      {id:'parse',    x:340,y:150, type:'process',  label:'Parse & validate'},
-      {id:'classify', x:340,y:245, type:'expand',   label:'Classify email',      drilldown:'classify',hint:'5 categories'},
-      {id:'route',    x:340,y:340, type:'expand',   label:'Route to handler',    drilldown:'routing', hint:'priority routing'},
-      {id:'done',     x:340,y:425, type:'end',      label:'Complete'},
-    ],
-    edges:[
-      {from:'start',    to:'parse'},
-      {from:'parse',    to:'classify'},
-      {from:'classify', to:'route',  label:'categorized'},
-      {from:'route',    to:'done'},
-    ]
-  },
+function deepClone(o){return JSON.parse(JSON.stringify(o));}
 
-  classify:{
-    title:'Email classification',
-    nodes:[
-      {id:'meta',     x:340,y:60,  type:'process', label:'Extract metadata'},
-      {id:'spam',     x:340,y:160, type:'decision', label:'Spam score > 0.7?'},
-      {id:'quar',     x:170,y:285, type:'expand',  label:'Quarantine',       drilldown:'spam',   hint:'review process'},
-      {id:'domain',   x:510,y:285, type:'decision', label:'Known sender?'},
-      {id:'internal', x:400,y:390, type:'process', label:'Internal email'},
-      {id:'vendor',   x:558,y:390, type:'expand',  label:'Vendor email',     drilldown:'vendor', hint:'vendor handling'},
-      {id:'tag',      x:340,y:480, type:'process', label:'Tag & prioritize'},
-    ],
-    edges:[
-      {from:'meta',     to:'spam'},
-      {from:'spam',     to:'quar',     label:'yes',  fromPort:'left',   toPort:'top'},
-      {from:'spam',     to:'domain',   label:'no',   fromPort:'right',  toPort:'top'},
-      {from:'quar',     to:'tag',      routeType:'lbend'},
-      {from:'domain',   to:'internal', label:'yes',  fromPort:'left',   toPort:'top'},
-      {from:'domain',   to:'vendor',   label:'no',   fromPort:'bottom', toPort:'top'},
-      {from:'internal', to:'tag'},
-      {from:'vendor',   to:'tag'},
-    ]
-  },
-
-  spam:{
-    title:'Spam & quarantine handling',
-    nodes:[
-      {id:'s_score', x:340,y:60,  type:'process',  label:'Get confidence score'},
-      {id:'s_high',  x:340,y:155, type:'decision',  label:'Score > 0.95?'},
-      {id:'s_del',   x:170,y:275, type:'end',       label:'Auto-delete'},
-      {id:'s_hold',  x:510,y:275, type:'process',   label:'Hold 24 hours'},
-      {id:'s_check', x:510,y:370, type:'decision',  label:'User released?'},
-      {id:'s_deliv', x:370,y:462, type:'end',       label:'Deliver to inbox'},
-      {id:'s_purge', x:555,y:462, type:'end',       label:'Purge'},
-    ],
-    edges:[
-      {from:'s_score', to:'s_high'},
-      {from:'s_high',  to:'s_del',   label:'yes', fromPort:'left',   toPort:'top'},
-      {from:'s_high',  to:'s_hold',  label:'no',  fromPort:'right',  toPort:'top'},
-      {from:'s_hold',  to:'s_check'},
-      {from:'s_check', to:'s_deliv', label:'yes', fromPort:'left',   toPort:'top'},
-      {from:'s_check', to:'s_purge', label:'no',  fromPort:'bottom', toPort:'top'},
-    ]
-  },
-
-  vendor:{
-    title:'Vendor email handling',
-    nodes:[
-      {id:'v_ext',   x:340,y:60,  type:'process',  label:'Extract vendor ID'},
-      {id:'v_known', x:340,y:155, type:'decision',  label:'Known vendor?'},
-      {id:'v_match', x:195,y:270, type:'process',   label:'Match to contract'},
-      {id:'v_new',   x:485,y:270, type:'process',   label:'Flag new vendor'},
-      {id:'v_route', x:340,y:365, type:'process',   label:'Route to procurement'},
-      {id:'v_done',  x:340,y:452, type:'end',       label:'Notify & log'},
-    ],
-    edges:[
-      {from:'v_ext',   to:'v_known'},
-      {from:'v_known', to:'v_match', label:'yes', fromPort:'left',  toPort:'top'},
-      {from:'v_known', to:'v_new',   label:'no',  fromPort:'right', toPort:'top'},
-      {from:'v_match', to:'v_route'},
-      {from:'v_new',   to:'v_route'},
-      {from:'v_route', to:'v_done'},
-    ]
-  },
-
-  routing:{
-    title:'Route to handler',
-    nodes:[
-      {id:'r_pri',    x:340,y:60,  type:'decision', label:'Priority level?'},
-      {id:'r_high',   x:170,y:165, type:'process',  label:'High priority'},
-      {id:'r_normal', x:340,y:165, type:'process',  label:'Normal queue'},
-      {id:'r_low',    x:510,y:165, type:'process',  label:'Low priority'},
-      {id:'r_assign', x:340,y:260, type:'process',  label:'Assign owner'},
-      {id:'r_log',    x:340,y:350, type:'end',      label:'Notify & log'},
-    ],
-    edges:[
-      {from:'r_pri',    to:'r_high',   label:'high',   fromPort:'left',   toPort:'top'},
-      {from:'r_pri',    to:'r_normal', label:'normal', fromPort:'bottom', toPort:'top'},
-      {from:'r_pri',    to:'r_low',    label:'low',    fromPort:'right',  toPort:'top'},
-      {from:'r_high',   to:'r_assign'},
-      {from:'r_normal', to:'r_assign'},
-      {from:'r_low',    to:'r_assign'},
-      {from:'r_assign', to:'r_log'},
-    ]
-  },
+// ═══════════════════════════════════════════════════════
+//  SHARED FLOW DEFINITIONS (reused across snapshots)
+// ═══════════════════════════════════════════════════════
+const F_ROUTING={
+  title:'Route to handler',
+  nodes:[
+    {id:'r_pri',   x:340,y:60, type:'decision',label:'Priority level?'},
+    {id:'r_high',  x:170,y:165,type:'process', label:'High priority'},
+    {id:'r_normal',x:340,y:165,type:'process', label:'Normal queue'},
+    {id:'r_low',   x:510,y:165,type:'process', label:'Low priority'},
+    {id:'r_assign',x:340,y:260,type:'process', label:'Assign owner'},
+    {id:'r_log',   x:340,y:350,type:'end',     label:'Notify & log'},
+  ],
+  edges:[
+    {from:'r_pri',to:'r_high',  label:'high',  fromPort:'left',  toPort:'top'},
+    {from:'r_pri',to:'r_normal',label:'normal',fromPort:'bottom',toPort:'top'},
+    {from:'r_pri',to:'r_low',   label:'low',   fromPort:'right', toPort:'top'},
+    {from:'r_high',  to:'r_assign'},
+    {from:'r_normal',to:'r_assign'},
+    {from:'r_low',   to:'r_assign'},
+    {from:'r_assign',to:'r_log'},
+  ]
 };
+
+const F_ROOT_V1={
+  title:'Email processing pipeline',
+  nodes:[
+    {id:'start',   x:340,y:60, type:'start',  label:'Incoming email'},
+    {id:'parse',   x:340,y:150,type:'process',label:'Parse & validate'},
+    {id:'classify',x:340,y:245,type:'process',label:'Classify email'},
+    {id:'route',   x:340,y:340,type:'expand', label:'Route to handler',drilldown:'routing'},
+    {id:'done',    x:340,y:425,type:'end',    label:'Complete'},
+  ],
+  edges:[
+    {from:'start',   to:'parse'},
+    {from:'parse',   to:'classify'},
+    {from:'classify',to:'route'},
+    {from:'route',   to:'done'},
+  ]
+};
+
+const F_ROOT_V2={
+  title:'Email processing pipeline',
+  nodes:[
+    {id:'start',   x:340,y:60, type:'start', label:'Incoming email'},
+    {id:'parse',   x:340,y:150,type:'process',label:'Parse & validate'},
+    {id:'classify',x:340,y:245,type:'expand', label:'Classify email',drilldown:'classify'},
+    {id:'route',   x:340,y:340,type:'expand', label:'Route to handler',drilldown:'routing'},
+    {id:'done',    x:340,y:425,type:'end',    label:'Complete'},
+  ],
+  edges:[
+    {from:'start',   to:'parse'},
+    {from:'parse',   to:'classify'},
+    {from:'classify',to:'route',label:'categorized'},
+    {from:'route',   to:'done'},
+  ]
+};
+
+// Classify: quar=process, vendor=process
+const F_CLASSIFY_V1={
+  title:'Email classification',
+  nodes:[
+    {id:'meta',    x:340,y:60, type:'process', label:'Extract metadata'},
+    {id:'spam',    x:340,y:160,type:'decision',label:'Spam score > 0.7?'},
+    {id:'quar',    x:170,y:285,type:'process', label:'Quarantine'},
+    {id:'domain',  x:510,y:285,type:'decision',label:'Known sender?'},
+    {id:'internal',x:400,y:390,type:'process', label:'Internal email'},
+    {id:'vendor',  x:558,y:390,type:'process', label:'Vendor email'},
+    {id:'tag',     x:340,y:480,type:'process', label:'Tag & prioritize'},
+  ],
+  edges:[
+    {from:'meta',    to:'spam'},
+    {from:'spam',    to:'quar',    label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'spam',    to:'domain',  label:'no', fromPort:'right', toPort:'top'},
+    {from:'quar',    to:'tag',     routeType:'lbend'},
+    {from:'domain',  to:'internal',label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'domain',  to:'vendor',  label:'no', fromPort:'bottom',toPort:'top'},
+    {from:'internal',to:'tag'},
+    {from:'vendor',  to:'tag'},
+  ]
+};
+
+// Classify: quar=expand, vendor=process
+const F_CLASSIFY_V2={
+  title:'Email classification',
+  nodes:[
+    {id:'meta',    x:340,y:60, type:'process', label:'Extract metadata'},
+    {id:'spam',    x:340,y:160,type:'decision',label:'Spam score > 0.7?'},
+    {id:'quar',    x:170,y:285,type:'expand',  label:'Quarantine',drilldown:'spam'},
+    {id:'domain',  x:510,y:285,type:'decision',label:'Known sender?'},
+    {id:'internal',x:400,y:390,type:'process', label:'Internal email'},
+    {id:'vendor',  x:558,y:390,type:'process', label:'Vendor email'},
+    {id:'tag',     x:340,y:480,type:'process', label:'Tag & prioritize'},
+  ],
+  edges:[
+    {from:'meta',    to:'spam'},
+    {from:'spam',    to:'quar',    label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'spam',    to:'domain',  label:'no', fromPort:'right', toPort:'top'},
+    {from:'quar',    to:'tag',     routeType:'lbend'},
+    {from:'domain',  to:'internal',label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'domain',  to:'vendor',  label:'no', fromPort:'bottom',toPort:'top'},
+    {from:'internal',to:'tag'},
+    {from:'vendor',  to:'tag'},
+  ]
+};
+
+// Classify: quar=expand, vendor=expand
+const F_CLASSIFY_V3={
+  title:'Email classification',
+  nodes:[
+    {id:'meta',    x:340,y:60, type:'process', label:'Extract metadata'},
+    {id:'spam',    x:340,y:160,type:'decision',label:'Spam score > 0.7?'},
+    {id:'quar',    x:170,y:285,type:'expand',  label:'Quarantine',drilldown:'spam'},
+    {id:'domain',  x:510,y:285,type:'decision',label:'Known sender?'},
+    {id:'internal',x:400,y:390,type:'process', label:'Internal email'},
+    {id:'vendor',  x:558,y:390,type:'expand',  label:'Vendor email',drilldown:'vendor'},
+    {id:'tag',     x:340,y:480,type:'process', label:'Tag & prioritize'},
+  ],
+  edges:[
+    {from:'meta',    to:'spam'},
+    {from:'spam',    to:'quar',    label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'spam',    to:'domain',  label:'no', fromPort:'right', toPort:'top'},
+    {from:'quar',    to:'tag',     routeType:'lbend'},
+    {from:'domain',  to:'internal',label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'domain',  to:'vendor',  label:'no', fromPort:'bottom',toPort:'top'},
+    {from:'internal',to:'tag'},
+    {from:'vendor',  to:'tag'},
+  ]
+};
+
+const F_SPAM={
+  title:'Spam & quarantine handling',
+  nodes:[
+    {id:'s_score',x:340,y:60, type:'process', label:'Get confidence score'},
+    {id:'s_high', x:340,y:155,type:'decision',label:'Score > 0.95?'},
+    {id:'s_del',  x:170,y:275,type:'end',     label:'Auto-delete'},
+    {id:'s_hold', x:510,y:275,type:'process', label:'Hold 24 hours'},
+    {id:'s_check',x:510,y:370,type:'decision',label:'User released?'},
+    {id:'s_deliv',x:370,y:462,type:'end',     label:'Deliver to inbox'},
+    {id:'s_purge',x:555,y:462,type:'end',     label:'Purge'},
+  ],
+  edges:[
+    {from:'s_score',to:'s_high'},
+    {from:'s_high', to:'s_del',  label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'s_high', to:'s_hold', label:'no', fromPort:'right', toPort:'top'},
+    {from:'s_hold', to:'s_check'},
+    {from:'s_check',to:'s_deliv',label:'yes',fromPort:'left',  toPort:'top'},
+    {from:'s_check',to:'s_purge',label:'no', fromPort:'bottom',toPort:'top'},
+  ]
+};
+
+const F_VENDOR={
+  title:'Vendor email handling',
+  nodes:[
+    {id:'v_ext',  x:340,y:60, type:'process', label:'Extract vendor ID'},
+    {id:'v_known',x:340,y:155,type:'decision',label:'Known vendor?'},
+    {id:'v_match',x:195,y:270,type:'process', label:'Match to contract'},
+    {id:'v_new',  x:485,y:270,type:'process', label:'Flag new vendor'},
+    {id:'v_route',x:340,y:365,type:'process', label:'Route to procurement'},
+    {id:'v_done', x:340,y:452,type:'end',     label:'Notify & log'},
+  ],
+  edges:[
+    {from:'v_ext',  to:'v_known'},
+    {from:'v_known',to:'v_match',label:'yes',fromPort:'left', toPort:'top'},
+    {from:'v_known',to:'v_new',  label:'no', fromPort:'right',toPort:'top'},
+    {from:'v_match',to:'v_route'},
+    {from:'v_new',  to:'v_route'},
+    {from:'v_route',to:'v_done'},
+  ]
+};
+
+// ═══════════════════════════════════════════════════════
+//  TIMELINE — 4 snapshots showing system evolution
+// ═══════════════════════════════════════════════════════
+const TIMELINE=[
+  {ts:'2024-01',label:'Initial draft — linear flow',
+   flows:{root:F_ROOT_V1,routing:F_ROUTING}},
+  {ts:'2024-04',label:'Classification sub-flow added',
+   flows:{root:F_ROOT_V2,classify:F_CLASSIFY_V1,routing:F_ROUTING}},
+  {ts:'2024-07',label:'Spam handling broken out',
+   flows:{root:F_ROOT_V2,classify:F_CLASSIFY_V2,spam:F_SPAM,routing:F_ROUTING}},
+  {ts:'2024-10',label:'Full system — vendor flow added',
+   flows:{root:F_ROOT_V2,classify:F_CLASSIFY_V3,spam:F_SPAM,vendor:F_VENDOR,routing:F_ROUTING}},
+];
+
+// ── LIVE STATE ────────────────────────────────────────
+let liveFlows=deepClone(TIMELINE[TIMELINE.length-1].flows);
+let viewIdx=null;    // null=live, number=history snapshot
+let navStack=['root'];
+let editNodeId=null;
+
+function isLive(){return viewIdx===null;}
+function activeFlows(){return isLive()?liveFlows:TIMELINE[viewIdx].flows;}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function svgH(nodes){return nodes.reduce((m,n)=>Math.max(m,n.y+D[n.type].hh),0)+52;}
 
 function portXY(node,port){
   const d=D[node.type],{x,y}=node;
@@ -232,21 +393,19 @@ function portXY(node,port){
   }
 }
 
-function svgH(nodes){
-  return nodes.reduce((m,n)=>Math.max(m,n.y+D[n.type].hh),0)+52;
-}
-
 function nodeHTML(n){
-  const {x,y,type,label,id,drilldown}=n;
-  const d=D[type], c=C[type];
-  const fn=drilldown?`nav('${drilldown}')`:'';
-  const cls=drilldown?'nd-expand':`nd-${type}`;
-  const ttl=drilldown&&FLOWS[drilldown]?FLOWS[drilldown].title:'';
+  const{id,x,y,type,label,drilldown}=n;
+  const d=D[type],c=C[type];
+  const canEdit=isLive()&&type!=='start'&&type!=='end';
+  const dblAttr=canEdit?` ondblclick="startEdit('${id}',event)"`:'';
+  const fn=drilldown&&activeFlows()[drilldown]?`nav('${drilldown}')`:'';
+  const cls=drilldown&&fn?'nd-expand':`nd-${type==='process'?'proc':type==='decision'?'dec':type}`;
+  const ttl=drilldown&&activeFlows()[drilldown]?activeFlows()[drilldown].title:'';
 
   if(type==='decision'){
     const pts=`${x},${y-d.hh} ${x+d.hw},${y} ${x},${y+d.hh} ${x-d.hw},${y}`;
-    return `<g class="${cls}"${fn?` onclick="${fn}"`:''}${ttl?` style="cursor:pointer"`:''}>
-      ${ttl?`<title>Drill down: ${ttl}</title>`:''}
+    return `<g class="${cls}"${fn?` onclick="${fn}"`:''}${dblAttr}>
+      ${ttl?`<title>${ttl}</title>`:''}
       <polygon points="${pts}" fill="${c.f}" stroke="${c.s}" stroke-width="0.8"/>
       <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
         fill="${c.t}" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="500">${label}</text>
@@ -255,35 +414,41 @@ function nodeHTML(n){
 
   const rx=(type==='start'||type==='end')?d.hh:8;
   const dash=type==='expand'?' stroke-dasharray="5 3"':'';
-  const sw=type==='expand'?'1':'0.8';
-
   let ind='';
-  if(type==='expand'){
-    const ix=x+d.hw-11, iy=y-d.hh+11;
+  if(type==='expand'&&fn){
+    const ix=x+d.hw-11,iy=y-d.hh+11;
     ind=`<circle cx="${ix}" cy="${iy}" r="5" fill="none" stroke="${c.s}" stroke-width="1"/>
-      <line x1="${ix}" y1="${iy-3}" x2="${ix}" y2="${iy+3}" stroke="${c.s}" stroke-width="1"/>
-      <line x1="${ix-3}" y1="${iy}" x2="${ix+3}" y2="${iy}" stroke="${c.s}" stroke-width="1"/>`;
+         <line x1="${ix}" y1="${iy-3}" x2="${ix}" y2="${iy+3}" stroke="${c.s}" stroke-width="1"/>
+         <line x1="${ix-3}" y1="${iy}" x2="${ix+3}" y2="${iy}" stroke="${c.s}" stroke-width="1"/>`;
+  }
+  // pencil hint for editable non-expand nodes
+  let editHint='';
+  if(canEdit&&type==='process'){
+    const px2=x+d.hw-9,py2=y-d.hh+9;
+    editHint=`<text x="${px2}" y="${py2}" text-anchor="middle" dominant-baseline="central"
+      fill="#252a28" font-family="IBM Plex Mono,monospace" font-size="9">✎</text>`;
   }
 
-  return `<g class="${cls}"${fn?` onclick="${fn}"`:''} style="${drilldown?'cursor:pointer':''}">
-    ${ttl?`<title>Drill down: ${ttl}</title>`:''}
+  return `<g class="${cls}"${fn?` onclick="${fn}"`:''}${dblAttr} style="${drilldown&&fn?'cursor:pointer':canEdit?'cursor:text':''}">
+    ${ttl?`<title>Drill into: ${ttl}</title>`:''}
     <rect class="nd-rect" x="${x-d.hw}" y="${y-d.hh}" width="${d.w}" height="${d.h}" rx="${rx}"
-      fill="${c.f}" stroke="${c.s}" stroke-width="${sw}"${dash}/>
+      fill="${c.f}" stroke="${c.s}" stroke-width="${type==='expand'?1:.8}"${dash}/>
     <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
       fill="${c.t}" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="500">${label}</text>
-    ${ind}
+    ${ind}${editHint}
   </g>`;
 }
 
 function edgeHTML(flow,edge){
   const from=flow.nodes.find(n=>n.id===edge.from);
   const to=flow.nodes.find(n=>n.id===edge.to);
-  const fp=edge.fromPort||'bottom', tp=edge.toPort||'top';
-  let [sx,sy]=portXY(from,fp), [ex,ey]=portXY(to,tp);
+  if(!from||!to)return'';
+  const fp=edge.fromPort||'bottom',tp=edge.toPort||'top';
+  let[sx,sy]=portXY(from,fp),[ex,ey]=portXY(to,tp);
   const G=6;
-  if(fp==='bottom')sy+=G; else if(fp==='top')sy-=G;
-  else if(fp==='left')sx-=G; else if(fp==='right')sx+=G;
-  if(tp==='top')ey-=G; else if(tp==='bottom')ey+=G;
+  if(fp==='bottom')sy+=G;else if(fp==='top')sy-=G;
+  else if(fp==='left')sx-=G;else if(fp==='right')sx+=G;
+  if(tp==='top')ey-=G;else if(tp==='bottom')ey+=G;
 
   let pathD;
   if(edge.routeType==='lbend'){
@@ -297,108 +462,121 @@ function edgeHTML(flow,edge){
 
   let lbl='';
   if(edge.label){
-    const dx=ex-sx, dy=ey-sy;
-    const len=Math.sqrt(dx*dx+dy*dy)||1;
-    const t=0.22, px=-dy/len*10, py=dx/len*10;
-    const lx=(sx+dx*t+px).toFixed(1), ly=(sy+dy*t+py).toFixed(1);
-    lbl=`<text x="${lx}" y="${ly}" text-anchor="middle" fill="${LC}"
-      font-family="IBM Plex Mono,monospace" font-size="10">${edge.label}</text>`;
+    const dx=ex-sx,dy=ey-sy,len=Math.sqrt(dx*dx+dy*dy)||1;
+    const t=0.22,px=-dy/len*10,py=dx/len*10;
+    lbl=`<text x="${(sx+dx*t+px).toFixed(1)}" y="${(sy+dy*t+py).toFixed(1)}"
+      text-anchor="middle" fill="${LC}" font-family="IBM Plex Mono,monospace" font-size="10">${edge.label}</text>`;
   }
-
-  return `<path d="${pathD}" fill="none" stroke="${EC}" stroke-width="1.5" marker-end="url(#arr)"/>
-${lbl}`;
+  return `<path d="${pathD}" fill="none" stroke="${EC}" stroke-width="1.5" marker-end="url(#arr)"/>${lbl}`;
 }
 
 function renderFlow(){
   const fid=navStack[navStack.length-1];
-  const flow=FLOWS[fid];
+  const flows=activeFlows();
+  const flow=flows[fid];
+  if(!flow){navStack=['root'];renderFlow();return;}
   const h=svgH(flow.nodes);
   const edges=flow.edges.map(e=>edgeHTML(flow,e)).join('\n');
   const nodes=flow.nodes.map(n=>nodeHTML(n)).join('\n');
   document.getElementById('svg-wrap').innerHTML=`
-<svg width="100%" viewBox="0 0 680 ${h}" style="overflow:visible">
-  <defs>
-    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M2 1L8 5L2 9" fill="none" stroke="${EC}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </marker>
-  </defs>
-  ${edges}
-  ${nodes}
+<svg width="100%" viewBox="0 0 680 ${h}">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="${EC}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker></defs>
+  ${edges}${nodes}
 </svg>`;
   renderAnchor();
+  document.getElementById('add-btn').disabled=!isLive();
 }
 
 function renderAnchor(){
   const aw=document.getElementById('anchor-wrap');
   const gw=document.getElementById('ghost-wrap');
-  if(navStack.length<=1){
-    aw.className='anchor-hidden';
-    gw.style.display='none';
-    return;
-  }
-  // find the node in the parent flow that triggered this drilldown
+  if(navStack.length<=1){aw.style.display='none';gw.style.display='none';return;}
   const parentFid=navStack[navStack.length-2];
-  const currentFid=navStack[navStack.length-1];
-  const parentFlow=FLOWS[parentFid];
-  const entryNode=parentFlow.nodes.find(n=>n.drilldown===currentFid);
-  const lbl=entryNode?entryNode.label:parentFlow.title;
-  document.getElementById('anchor-label').textContent=lbl;
-  aw.className='';
+  const curFid=navStack[navStack.length-1];
+  const pflow=activeFlows()[parentFid];
+  const enode=pflow?.nodes.find(n=>n.drilldown===curFid);
+  document.getElementById('anchor-label').textContent=enode?.label||pflow?.title||'—';
+  aw.style.display='block';
 
-  // ghost minimap of parent flow
-  const pflow=parentFlow;
-  const gh=svgH(pflow.nodes);
-  const scale=160/680;
-  const gh_h=Math.round(gh*scale);
-  const pedges=pflow.edges.map(e=>edgeHTML(pflow,e)).join('\n');
-  // render nodes, highlighting the entry node
-  const pnodes=pflow.nodes.map(n=>{
-    const isEntry=entryNode&&n.id===entryNode.id;
-    const d=D[n.type],c=isEntry?{f:'#1a2e40',s:'#5a9ace',t:'#7ab8e8'}:C[n.type];
-    const {x,y,type,label}=n;
-    if(type==='decision'){
-      const pts=`${x},${y-d.hh} ${x+d.hw},${y} ${x},${y+d.hh} ${x-d.hw},${y}`;
-      return `<polygon points="${pts}" fill="${c.f}" stroke="${c.s}" stroke-width="${isEntry?2:0.5}"/>`;
-    }
-    const rx=(type==='start'||type==='end')?d.hh:8;
-    return `<rect x="${x-d.hw}" y="${y-d.hh}" width="${d.w}" height="${d.h}" rx="${rx}" fill="${c.f}" stroke="${c.s}" stroke-width="${isEntry?2:0.5}"${type==='expand'?' stroke-dasharray="5 3"':''}/>`;
-  }).join('\n');
-  document.getElementById('ghost-svg').innerHTML=`<svg width="160" height="${gh_h}" viewBox="0 0 680 ${gh}" style="display:block">
-  <defs><marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-    <path d="M2 1L8 5L2 9" fill="none" stroke="${EC}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  </marker></defs>
-  ${pedges.replace(/url\(#arr\)/g,'url(#arr2)')}
-  ${pnodes}
-</svg>`;
-  gw.style.display='block';
+  // ghost minimap
+  if(pflow){
+    const gh=svgH(pflow.nodes);
+    const pedges=pflow.edges.map(e=>edgeHTML(pflow,e)).join('\n');
+    const pnodes=pflow.nodes.map(n=>{
+      const isE=enode&&n.id===enode.id;
+      const d=D[n.type],c=isE?{f:'#1a2e40',s:'#5a9ace'}:C[n.type];
+      const{x,y,type}=n;
+      if(type==='decision'){
+        const pts=`${x},${y-d.hh} ${x+d.hw},${y} ${x},${y+d.hh} ${x-d.hw},${y}`;
+        return `<polygon points="${pts}" fill="${c.f}" stroke="${c.s}" stroke-width="${isE?2:.5}"/>`;
+      }
+      const rx=(type==='start'||type==='end')?d.hh:8;
+      return `<rect x="${x-d.hw}" y="${y-d.hh}" width="${d.w}" height="${d.h}" rx="${rx}"
+        fill="${c.f}" stroke="${c.s}" stroke-width="${isE?2:.5}"${type==='expand'?' stroke-dasharray="5 3"':''}/>`;
+    }).join('\n');
+    document.getElementById('ghost-svg').innerHTML=`<svg width="150" height="${Math.round(gh*150/680)}" viewBox="0 0 680 ${gh}">
+      <defs><marker id="arr3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="${EC}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker></defs>
+      ${pedges.replace(/url\(#arr\)/g,'url(#arr3)')}${pnodes}</svg>`;
+    gw.style.display='block';
+  }
 }
 
 function renderBc(){
   const bc=document.getElementById('bc');
+  const flows=activeFlows();
   const parts=navStack.map((fid,i)=>{
-    const f=FLOWS[fid];
+    const f=flows[fid];
     const isLast=i===navStack.length-1;
-    if(isLast) return `<span class="bc-item cur">${f.title}</span>`;
-    return `<span class="bc-item" onclick="goTo(${i})">${f.title}</span>`;
+    if(isLast)return`<span class="bc-item cur">${f?.title||fid}</span>`;
+    return`<span class="bc-item" onclick="goTo(${i})">${f?.title||fid}</span>`;
   }).join('<span class="bc-sep">›</span>');
-  const back=navStack.length>1?'':'hidden';
-  bc.innerHTML=`<button class="bc-back ${back}" onclick="goBack()">← Back</button>${parts}`;
+  bc.innerHTML=`<button class="bc-back${navStack.length>1?'':' hidden'}" onclick="goBack()">← Back</button>${parts}`;
 }
 
-let navStack=['root'];
+function renderTimeline(){
+  const dots=document.getElementById('tl-dots');
+  dots.innerHTML='';
+  const total=TIMELINE.length+1; // +1 for live dot
+  TIMELINE.forEach((snap,i)=>{
+    const isActive=!isLive()&&viewIdx===i;
+    const isPast=isLive()||(!isLive()&&viewIdx>i);
+    const dot=document.createElement('div');
+    dot.className='tl-dot'+(isActive?' active':isPast?' past':'');
+    dot.innerHTML=`<div class="tl-dot-c"></div><div class="tl-dot-ts">${snap.ts}</div>`;
+    dot.onclick=()=>seekTimeline(i);
+    dots.appendChild(dot);
+  });
+  // live dot
+  const liveDot=document.createElement('div');
+  liveDot.className='tl-dot'+(isLive()?' live-dot active':'');
+  liveDot.innerHTML=`<div class="tl-dot-c"></div><div class="tl-dot-ts">live</div>`;
+  liveDot.onclick=()=>returnToLive();
+  dots.appendChild(liveDot);
 
+  const curSnap=isLive()?{label:`${TIMELINE.length} snapshot${TIMELINE.length!==1?'s':''} · editing enabled`}:TIMELINE[viewIdx];
+  document.getElementById('tl-desc').textContent=curSnap.label;
+  document.getElementById('tl-prev').disabled=!isLive()&&viewIdx===0;
+  document.getElementById('tl-next').disabled=isLive();
+  document.getElementById('hist-badge').classList.toggle('show',!isLive());
+  document.getElementById('btn-return').style.display=isLive()?'none':'inline-block';
+  document.getElementById('btn-snapshot').disabled=!isLive();
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
 function transition(cb){
   const c=document.getElementById('canvas');
   c.style.opacity='0';
-  setTimeout(()=>{
-    cb();
-    c.style.opacity='1';
-    c.scrollTop=0;
-  },180);
+  setTimeout(()=>{cb();c.style.opacity='1';c.scrollTop=0;},160);
 }
 
 function nav(fid){
-  if(!FLOWS[fid])return;
+  if(!activeFlows()[fid])return;
   transition(()=>{navStack.push(fid);renderFlow();renderBc();});
 }
 
@@ -412,10 +590,156 @@ function goTo(idx){
   transition(()=>{navStack=navStack.slice(0,idx+1);renderFlow();renderBc();});
 }
 
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'&&navStack.length>1)goBack();
+// ═══════════════════════════════════════════════════════
+//  TIMELINE CONTROLS
+// ═══════════════════════════════════════════════════════
+function seekTimeline(idx){
+  viewIdx=idx;
+  // reset nav to root if current fid doesn't exist in new snapshot
+  const flows=activeFlows();
+  navStack=navStack.filter(fid=>flows[fid]);
+  if(navStack.length===0)navStack=['root'];
+  cancelEdit();
+  transition(()=>{renderFlow();renderBc();renderTimeline();});
+}
+
+function returnToLive(){
+  viewIdx=null;
+  const flows=activeFlows();
+  navStack=navStack.filter(fid=>flows[fid]);
+  if(navStack.length===0)navStack=['root'];
+  transition(()=>{renderFlow();renderBc();renderTimeline();});
+}
+
+function tlStep(d){
+  const cur=isLive()?TIMELINE.length:viewIdx;
+  const next=Math.max(0,Math.min(TIMELINE.length,cur+d));
+  if(next===TIMELINE.length)returnToLive();
+  else seekTimeline(next);
+}
+
+function saveSnapshot(){
+  if(!isLive())return;
+  const now=new Date();
+  const ts=now.toISOString().slice(0,7);
+  TIMELINE.push({ts,label:'Saved snapshot',flows:deepClone(liveFlows)});
+  renderTimeline();
+  // brief flash on button
+  const btn=document.getElementById('btn-snapshot');
+  btn.textContent='✓ Saved';
+  setTimeout(()=>btn.textContent='⊕ Snapshot',1400);
+}
+
+// ═══════════════════════════════════════════════════════
+//  INLINE EDITING
+// ═══════════════════════════════════════════════════════
+function startEdit(nodeId,evt){
+  if(!isLive())return;
+  evt.stopPropagation();
+  cancelEdit();
+  const fid=navStack[navStack.length-1];
+  const flow=liveFlows[fid];
+  if(!flow)return;
+  const node=flow.nodes.find(n=>n.id===nodeId);
+  if(!node)return;
+
+  const svg=document.getElementById('svg-wrap').querySelector('svg');
+  const sr=svg.getBoundingClientRect();
+  const vbH=svgH(flow.nodes);
+  const sx=sr.width/680, sy=sr.height/vbH;
+
+  const inp=document.getElementById('edit-input');
+  inp.value=node.label;
+  inp.style.left=(sr.left+node.x*sx-80*sx)+'px';
+  inp.style.top=(sr.top+node.y*sy-14*sy)+'px';
+  inp.style.width=Math.max(120,160*sx)+'px';
+  inp.style.fontSize=Math.max(10,Math.round(11*sx))+'px';
+  document.getElementById('edit-overlay').style.display='block';
+  inp.dataset.nodeId=nodeId;
+  inp.dataset.fid=fid;
+  editNodeId=nodeId;
+  setTimeout(()=>{inp.focus();inp.select();},10);
+}
+
+function commitEdit(){
+  const inp=document.getElementById('edit-input');
+  const nodeId=inp.dataset.nodeId;
+  const fid=inp.dataset.fid;
+  const val=inp.value.trim();
+  if(val&&liveFlows[fid]){
+    const node=liveFlows[fid].nodes.find(n=>n.id===nodeId);
+    if(node)node.label=val;
+    renderFlow();renderBc();
+  }
+  cancelEdit();
+}
+
+function cancelEdit(){
+  document.getElementById('edit-overlay').style.display='none';
+  editNodeId=null;
+}
+
+function addNode(){
+  if(!isLive())return;
+  const fid=navStack[navStack.length-1];
+  const flow=liveFlows[fid];
+  if(!flow)return;
+  const maxY=Math.max(...flow.nodes.map(n=>n.y+D[n.type].hh));
+  const newId='n_'+Date.now();
+  flow.nodes.push({id:newId,x:340,y:maxY+80,type:'process',label:'New step'});
+  renderFlow();
+  // auto-open edit for new node
+  setTimeout(()=>{
+    const svg=document.getElementById('svg-wrap').querySelector('svg');
+    if(svg){
+      const node=flow.nodes.find(n=>n.id===newId);
+      if(node){
+        const sr=svg.getBoundingClientRect();
+        const vbH=svgH(flow.nodes);
+        const sx=sr.width/680,sy=sr.height/vbH;
+        const inp=document.getElementById('edit-input');
+        inp.value=node.label;
+        inp.style.left=(sr.left+node.x*sx-80*sx)+'px';
+        inp.style.top=(sr.top+node.y*sy-14*sy)+'px';
+        inp.style.width=Math.max(120,160*sx)+'px';
+        inp.style.fontSize=Math.max(10,Math.round(11*sx))+'px';
+        document.getElementById('edit-overlay').style.display='block';
+        inp.dataset.nodeId=newId;
+        inp.dataset.fid=fid;
+        editNodeId=newId;
+        inp.focus();inp.select();
+      }
+    }
+  },60);
+}
+
+// ── INPUT EVENTS ──────────────────────────────────────
+document.getElementById('edit-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){commitEdit();e.preventDefault();}
+  if(e.key==='Escape'){cancelEdit();e.preventDefault();}
+});
+document.getElementById('edit-input').addEventListener('blur',()=>{
+  // small delay so click events fire first
+  setTimeout(()=>{if(editNodeId)commitEdit();},120);
 });
 
+// close edit on canvas click outside
+document.getElementById('canvas').addEventListener('click',e=>{
+  if(editNodeId&&!e.target.closest('#edit-overlay'))cancelEdit();
+});
+
+// keyboard
+document.addEventListener('keydown',e=>{
+  if(editNodeId)return;
+  if(e.key==='Escape'&&navStack.length>1)goBack();
+  if(e.key==='ArrowLeft'&&!e.metaKey)tlStep(-1);
+  if(e.key==='ArrowRight'&&!e.metaKey)tlStep(1);
+});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+renderTimeline();
 renderBc();
 renderFlow();
 </script>
