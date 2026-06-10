@@ -1,6 +1,43 @@
 # SnapChart
 A flowchart as code with timeline
 
+# Enhancements for next version
+
+I think at that next step we really start to get into a more full-fledged application.  Things such as UNDO, REDO ; Probably a side window of the code but the tricky part is delivering an experience where if someone knows the code they could easily modify there (and copy paste within it)  but the ability to add/insert objects with mouse ; insert arrows with mouse ; click on links and add text all of those things would really bring it to a pretty polished state
+Possibly real time collaboration
+
+
+
+Considerations
+What you're describing is a split-pane diagram IDE. Left side: live visual canvas with mouse interactions. Right side: the code/text representation. Both stay in sync — edit the code, diagram updates; click-drag on canvas, code updates. That's exactly what Mermaid.live does and why it felt closer to a real tool — the code pane is your power-user escape hatch, the canvas is your human interface, and neither is the "real" version.
+The interaction primitives you listed:
+
+Undo/redo — fundamental, can't ship without it
+Click node to select, double-click to rename — already partially there
+Drag to move nodes
+Click-drag between nodes to draw edges
+Click edge to add label
+Code pane — editable, live-syncing, copyable
+Add node via canvas (not just a bottom button)
+
+That's roughly a 3-4 week build to do properly. Not a one-session applet anymore — it's an application.
+
+The collaboration idea is interesting and not as far as it sounds. The simplest version isn't real-time sync (which is genuinely hard — CRDTs, conflict resolution, websockets). The simplest version is what Git already does: each person has a named snapshot, and a "compare" view renders them side by side or diff-highlighted. You already have the timeline infrastructure for exactly this. Instead of snapshots being "2024-01 → 2024-04", they're "Matt's version → Alex's version → Sarah's version." The overlay rendering where each person's divergent nodes get a colour-coded tint is very achievable.
+The Figma model of "multiplayer cursors + shared canvas" is the full version and is a different class of problem entirely.
+
+My honest suggestion on sequencing:
+Rather than adding more to the self-contained HTML applet, this is the point where the right move is probably to stop building one-shot HTML files and think about what the actual stack should be. A proper split-pane diagram IDE wants:
+
+A persistent data store (even just flat files + the manifest model)
+A proper component structure (React makes the split-pane sync much cleaner)
+Served from your nginx stack like the other tools
+
+Which means the next session probably shouldn't be "let me add undo/redo to the HTML file" — it should be scoping what the v1 application architecture looks like and building the first real version of it properly.
+
+
+
+
+
 #v2
 
 
